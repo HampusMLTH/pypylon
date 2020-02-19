@@ -1,6 +1,9 @@
 # Ignore SWIG generates
 generated/
 
+#ingeore .ipynb_checkpoints
+.ipynb_checkpoints/
+
 # Ignore build/dist tree
 /build*
 /dist/
@@ -32,7 +35,12 @@ tests/genicam/xml/
 scripts/reference_types.txt
 
 # Ignore NodeMap.pfs
-NodeMap.pfs
+#NodeMap.pfs
+
+#Ignore jpg,jpeg tiff
+*.jpg
+*.jpeg
+*.tiff
 
 #ignore generated html
 pypylon.*.html
