@@ -3,47 +3,14 @@ from pypylon import pylon
 import platform
 import time
 from multiprocessing import Process, Event
-
-def main():
-    
-    #event_done = Event()
-    event_stop = Event()
-    
-    t0 = time.time()
-    
-    print("---updating nodemap---")
-    update_nodemap()
-    print("time updating nodemap:", time.time() - t0)
-    # add option of setting exp time etc?
-
-    print("start continuos acq..")
-    proc_cont = Process(target=cont_acq, args=(event_stop,))
-    proc_cont.start()
-    print("cont acq started, sleep abit..")    
-    time.sleep(3)
-    
-    event_stop.set()
-    print("stop cont acq")
-    
-    t0 = time.time()
-    print("---saving  9 images---")
-    save_images()
-    t_elapsed = time.time() - t0
-    print("time saving 9 images:", t_elapsed)
-    
-    print("start cont acq again")
-    proc_cont = Process(target=cont_acq, args=(event_stop,))
-    proc_cont.start()
-    time.sleep(3)
-    
-    event_stop.set()
-    proc_cont.join()
-    
-    
-    
-    
+#import logging, sys
+   
     
 def update_nodemap():
+    # TODO: Change all prints to logging debug
+    #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+    #logging.debug('A debug message!')
+    #logging.info('We processed %d records', len(processed_records)) 
     # The name of the pylon file handle
     nodeFile = "daA1600-60um_exp_1000.pfs"
 
@@ -62,8 +29,7 @@ def update_nodemap():
     # Close the camera.
     camera.Close()
     
-def save_images():
-    num_img_to_save = 9
+def save_images(num_img_to_save = 9):
     img = pylon.PylonImage()
     tlf = pylon.TlFactory.GetInstance()
 
@@ -128,6 +94,4 @@ def cont_acq(event_stop):
     cam.StopGrabbing()
     cam.Close()
 
-if __name__ == '__main__':
-    main()
     
