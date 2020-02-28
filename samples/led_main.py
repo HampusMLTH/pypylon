@@ -46,6 +46,7 @@ def main():
     
     event_stop = True
     thread_cont.join()
+    cam.Close()
     
     
     
