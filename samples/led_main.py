@@ -2,73 +2,81 @@
 from pypylon import pylon
 import platform
 import time
-from multiprocessing import Process, Event
+#from multiprocessing import Process, Event
+import threading
 
 def main():
     
-    #event_done = Event()
-    event_stop = Event()
-    
+    cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+    cam.Open()
     t0 = time.time()
     
     print("---updating nodemap---")
-    update_nodemap()
+    update_nodemap(cam)
     print("time updating nodemap:", time.time() - t0)
     # add option of setting exp time etc?
 
     print("start continuos acq..")
-    proc_cont = Process(target=cont_acq, args=(event_stop,))
-    proc_cont.start()
+    event_stop = False
+    thread_cont = threading.Thread(target=cont_acq, args=(lambda : event_stop, cam,))
+    thread_cont.start()
     print("cont acq started, sleep abit..")    
+    #print("cont_test->")
+    #cont_test(event_stop)
     time.sleep(3)
     
-    event_stop.set()
+    event_stop = True
     print("stop cont acq")
+    thread_cont.join()
     
     t0 = time.time()
     print("---saving  9 images---")
-    save_images()
+    save_images(cam)
+
     t_elapsed = time.time() - t0
     print("time saving 9 images:", t_elapsed)
     
     print("start cont acq again")
-    proc_cont = Process(target=cont_acq, args=(event_stop,))
-    proc_cont.start()
-    time.sleep(3)
+
+    event_stop = False
+    thread_cont = threading.Thread(target=cont_acq, args=(lambda : event_stop, cam,))
+
+    thread_cont.start()
+    time.sleep(6)
     
-    event_stop.set()
-    proc_cont.join()
+    event_stop = True
+    thread_cont.join()
     
     
     
     
     
-def update_nodemap():
+def update_nodemap(cam):
     # The name of the pylon file handle
     nodeFile = "daA1600-60um_exp_1000.pfs"
 
     # Create an instant camera object with the camera device found first.
-    camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-    camera.Open()
+    
+    
     # Print the model name of the camera.
-    print("Using device ", camera.GetDeviceInfo().GetModelName())
+    print("Using device ", cam.GetDeviceInfo().GetModelName())
 
     # featurePersistence = pylon.FeaturePersistence()
 
 
     # Just for demonstration, read the content of the file back to the camera's node map with enabled validation.
     print("Updating nodefile to camera's node map...")
-    pylon.FeaturePersistence.Load(nodeFile, camera.GetNodeMap(), True)
+    pylon.FeaturePersistence.Load(nodeFile, cam.GetNodeMap(), True)
     # Close the camera.
-    camera.Close()
+    #cam.Close()
     
-def save_images():
+def save_images(cam):
     num_img_to_save = 9
     img = pylon.PylonImage()
-    tlf = pylon.TlFactory.GetInstance()
+    #tlf = pylon.TlFactory.GetInstance()
 
-    cam = pylon.InstantCamera(tlf.CreateFirstDevice())
-    cam.Open()
+    #cam = pylon.InstantCamera(tlf.CreateFirstDevice())
+    #cam.Open()
     cam.StartGrabbing()
     t_grab = time.time()
     for i in range(num_img_to_save):
@@ -97,19 +105,22 @@ def save_images():
             img.Release()
     print("time of only grabbing 9 im, (no startup): ", time.time() - t_grab)
     cam.StopGrabbing()
-    cam.Close()
+    #cam.Close()
     
-def cont_acq(event_stop):
+def cont_acq(stop, cam):
+    #import pdb
+    #pdb.set_trace()
+    #print("inside cont_acq")
     img = pylon.PylonImage()
-    tlf = pylon.TlFactory.GetInstance()
+    #tlf = pylon.TlFactory.GetInstance()
 
-    cam = pylon.InstantCamera(tlf.CreateFirstDevice())
-    cam.Open()
+    #cam = pylon.InstantCamera(tlf.CreateFirstDevice())
+    #cam.Open()
     cam.StartGrabbing()
     t_grab = time.time()
     for i in range(1000):
-        if event_stop.is_set():
-            event_stop.clear()
+        if stop():
+            print("STOP!!!!!!")
             break
         with cam.RetrieveResult(2000) as result:
 
@@ -124,9 +135,12 @@ def cont_acq(event_stop):
             img.Release()
             if i % 10 == 0:
                 print(i)
-    print("Continuous acquisition stopped after", time.time() - t_grab, "seconds")
+    
     cam.StopGrabbing()
-    cam.Close()
+    print("Continuous acquisition stopped after", time.time() - t_grab, "seconds")
+    #cam.Close()
+
+
 
 if __name__ == '__main__':
     main()
