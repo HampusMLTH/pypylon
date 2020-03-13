@@ -4,6 +4,7 @@ import os
 from picamera import PiCamera
 from csv import reader,writer
 import brickpi3
+import shutil
 
 class GoniometerObject(object):
     """ class for controlling the goniometer"""
@@ -29,13 +30,10 @@ class GoniometerObject(object):
     @led_angle.setter
     def led_angle(self, angle):
         """Set the led angle"""
-        print(1)
-        sleep(3)
-        print(3)
         self.BP.set_motor_limits(self.BP.PORT_C, 100, 1440)
         pos1=round(8652*7*(angle/360))
         self.BP.set_motor_position(self.BP.PORT_C, pos1)
-        sleep(abs(round(8652*7*(angle/360)/1440)+1))
+        #sleep(abs(round(8652*7*(angle/360)/1440)+1))
         
     @property
     def stage_angle(self):
@@ -60,10 +58,10 @@ class GoniometerObject(object):
             self.BP.set_motor_limits(self.BP.PORT_B, 100, 1440/7.5)
             self.BP.set_motor_position(self.BP.PORT_B, pos2)
             
-        sleep(angle*2/1440+1)
+        #sleep(angle*2/1440+1)
         
         # move the motor
-        print("moving")
+        #print("moving")
         #print(self.angle_2_motorpos(angle, self.STAGE))
         
     @property
@@ -79,13 +77,42 @@ class GoniometerObject(object):
         self.BP.set_motor_limits(self.BP.PORT_B, 100, 1440)
         pos1=angle*2
         self.BP.set_motor_position(self.BP.PORT_B, pos1)
-        sleep(round(2700*(angle/360))/1440+1)
+        #sleep(round(2700*(angle/360))/1440+1)
     
     def init_motors(self):    
         self.BP.offset_motor_encoder(self.BP.PORT_A, self.BP.get_motor_encoder(self.BP.PORT_A))
         self.BP.offset_motor_encoder(self.BP.PORT_B, self.BP.get_motor_encoder(self.BP.PORT_B))
         self.BP.offset_motor_encoder(self.BP.PORT_C, self.BP.get_motor_encoder(self.BP.PORT_C))
         self.BP.offset_motor_encoder(self.BP.PORT_D, self.BP.get_motor_encoder(self.BP.PORT_D))
+    
+    def done_moving(self, motor):
+        status_2_steps_back = []
+        for i in range(1,120):
+            prev_status = self.motor_status(motor)
+            sleep(0.1)
+            status = self.motor_status(motor)
+            print(status)
+            
+            if prev_status == status:
+                #print("SAME!")
+                break
+            elif status_2_steps_back == status:
+                #If it jumps between 2 posistions
+                print("stop jumping!")
+                self.BP.reset_all()
+                break
+            status_2_steps_back = prev_status
+    
+    def motor_status(self, motor):
+        try:
+            status = self.BP.get_motor_status(self.BP.PORT_C)
+            return status
+        except IOError as error:
+            print(error)
+        
+    @staticmethod
+    def copy_csv(protocol_file_name, destination_path):
+        shutil.copy(protocol_file_name, destination_path + protocol_file_name)
     
     @staticmethod
     def angle_2_motorpos(angle, motor):
@@ -122,36 +149,13 @@ class GoniometerObject(object):
         
         BP.reset_all()
 
-    def stage(BP,angle):
-        chk_pos = BP.get_motor_encoder(BP.PORT_A)
-        BP.set_motor_limits(BP.PORT_A, 100, 1440)
-        pos1=round(2700*(angle/360))
-        pos_chk=pos1+0.1
-        BP.set_motor_position(BP.PORT_A, pos1)
-        
-        if abs(chk_pos-pos_chk) > 10:
-            pos2=-angle
-            BP.set_motor_limits(BP.PORT_B, 100, 1440/7.5)
-            BP.set_motor_position(BP.PORT_B, pos2)
-            
-        sleep(angle*2/1440+1)
-        
-    def sample(BP,angle):
-        BP.set_motor_limits(BP.PORT_B, 100, 1440)
-        pos1=angle*2
-        BP.set_motor_position(BP.PORT_B, pos1)
-        sleep(round(2700*(angle/360))/1440+1)
-        
-    def led(BP,angle):
-        BP.set_motor_limits(BP.PORT_C, 100, 1440)
-        pos1=round(8652*7*(angle/360))
-        BP.set_motor_position(BP.PORT_C, pos1)
-        sleep(abs(round(8652*7*(angle/360)/1440)+1))
+
         
     def polarizer(BP,angle):
         BP.set_motor_limits(BP.PORT_D, 100, 1440)
         BP.set_motor_position(BP.PORT_D, angle*3.75)
         
+    @staticmethod    
     def read_csv(file_name):
         csvfile1= open(file_name,'r', newline='')
         reader1 = reader(csvfile1,dialect='excel')

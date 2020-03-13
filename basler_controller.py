@@ -9,15 +9,14 @@ import os
 #import logging, sys
 
 class BaslerController(object):
-    """ blucontroller class for the basler camera """
+    """ Controller class for the basler camera """
     
 
     def __init__(self, folder_path):
         self.img = pylon.PylonImage()
         self.cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
         self.nbr_im = 9
-        timestr = time.strftime("%Y%m%d-%H%M%S/")
-        self.folder_path = folder_path + timestr
+        self.folder_path = folder_path
         os.mkdir(self.folder_path) # unique folder for this measurement
         self.counter = 0
         
@@ -31,7 +30,7 @@ class BaslerController(object):
         
     def update_nodemap(self):
         # The name of the pylon file handle
-        node_file = "daA1600-60um_1000_rp3.pfs"
+        node_file = "daA1600-60um_6683_rp3.pfs"
         shutil.copy(node_file, self.folder_path + node_file) # make a copy of the settings used for this measurement
         # Print the model name of the camera.
         print("Using device ", self.cam.GetDeviceInfo().GetModelName())
@@ -51,7 +50,7 @@ class BaslerController(object):
         
     def stop_cont_acq(self):
         self._stop_cont_acq = True
-        print("stop sent")
+        #print("stop sent")
         self.thread_cont.join()
     
     def __cont_acq(self, stop):
@@ -59,7 +58,7 @@ class BaslerController(object):
         t_grab = time.time()
         for i in range(1000000):
             if stop():
-                print("stopping cont acq")
+                #print("stopping cont acq")
                 break
             with self.cam.RetrieveResult(2000) as result:
                 self.counter = self.counter + 1
@@ -72,10 +71,10 @@ class BaslerController(object):
                 # image object).
                 
                 self.img.Release()
-                if i % 10 == 0:
-                    print(i)
-                    print("counter at %d" % self.counter)
-                    print("mod %d" % (self.counter % 9))
+                #if i % 10 == 0:
+                    #print(i)
+                    #print("counter at %d" % self.counter)
+                    #print("mod %d" % (self.counter % 9))
                     # Printing every 10 exposures
         self.cam.StopGrabbing()
         print("Continuous acquisition stopped after", time.time() - t_grab, "seconds")
@@ -94,22 +93,24 @@ class BaslerController(object):
                 # grab result buffer. This prevents the buffer's reuse for grabbing.
                 self.img.AttachGrabResultBuffer(result)
                 filename = "%d.tiff" % (self.counter % 9) # Save with a filename corresponding to the same LED each time
-                print("image %d saved with filename " % i + filename)
+                #print("image %d saved with filename " % i + filename)
                 self.img.Save(pylon.ImageFileFormat_Tiff , filename)
 
                 # In order to make it possible to reuse the grab result for grabbing
                 # again, we have to release the image (effectively emptying the
                 # image object).
-                print("counter at %d" % self.counter)
-                print("mod %d" % (self.counter % 9))
+                #print("counter at %d" % self.counter)
+                #print("mod %d" % (self.counter % 9))
                 self.img.Release()
         print("time of only grabbing 9 im, (no startup): ", time.time() - t_grab)
         self.cam.StopGrabbing()
+        
+    def move_images(self, coords):
         t_move = time.time()
-        timestr = time.strftime("%Y%m%d-%H%M%S/")
-        os.mkdir(self.folder_path  + timestr)
+        #timestr = time.strftime("%Y%m%d-%H%M%S/")
+        coord_str = "led_{}_stage_{}_sample_{}/".format(coords[0], coords[1], coords[2])
+        os.mkdir(self.folder_path  + coord_str)
         for i in range(self.nbr_im):
-            shutil.move("%d.tiff" % i, self.folder_path  + timestr + "%d.tiff" % i)
-        print(timestr)
+            shutil.move("%d.tiff" % i, self.folder_path  + coord_str + "%d.tiff" % i)
         print("time of moving 9 images: ", time.time() - t_move)
         
