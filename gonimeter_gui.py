@@ -13,21 +13,104 @@
 # ===============================================================================
 from pypylon import pylon
 from pypylon import genicam
+import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 import sys
 
+nodemap_uploaded = 0
 
 def main():
     img_list = grab_im()
-    for i in range(0,9):
-        plt.hist(img[i], 32, range=[0,256], label='first row', alpha=0.5)
-        plt.hist(img[-1,:], 32, range=[0,256], label='last row', alpha=0.5)
-        plt.legend(loc='upper right')
+    img_list2 = grab_im()
+    img_list3 = grab_im()
+    img_list4 = grab_im()
+    i = 0
+    mean_vals = []
+    mean_vals2 = []
+    mean_vals3 = []
+    mean_vals4 = []
+    figure_hist = plt.figure(1)
+
+    for img in img_list2:
+       mean_vals2.append(img.mean())
+    for img in img_list3:
+       mean_vals3.append(img.mean())
+    for img in img_list4:
+       mean_vals4.append(img.mean())
+    for img in img_list:
+        plt.hist(img[i].flatten(), 32, range=[0,256], label='LED {}'.format(i), alpha=0.5)
+        #plt.hist(img[-1,:], 32, range=[0,256], label='last row', alpha=0.5)
+        #plt.legend(loc='upper right')
+        i += 1
+        mean_vals.append(img.mean())
+    
+    print("Mean Values:")
+    
+    print(mean_vals2)
+    print(mean_vals3)
+    print(mean_vals4)
+    print(mean_vals)
+    plt.legend(loc='upper right')
+    darkest_led = mean_vals.index(min(mean_vals))
+    brightest_led = mean_vals.index(max(mean_vals))
+    print("darkest is LED {}".format(darkest_led))
+    print("brightest is LED {}".format(brightest_led))
+    print("diff is {}".format(mean_vals[brightest_led] - mean_vals[darkest_led]))
+    figure_darkest_image = plt.figure(2)
+    plt.imshow(img_list[darkest_led])
+    figure_brightest_image = plt.figure(3)
+    plt.imshow(img_list[brightest_led])
+    
+    red = (darkest_led + 6) % 9
+    print("red is {}".format(red))
+    
+    
+    green = (darkest_led + 5) % 9
+    print("green is {}".format(green))
+    
+    
+    blue = (darkest_led + 3) % 9
+    print("blue is {}".format(blue))
+    #make color image
+    #dark is 0
+    # 1 365
+    # 2 405
+    # 3 430 (blue)
+    # 4 490
+    # 5 525 (green)
+    # 6 630 (red)
+    # 7 810
+    # 8 940
+    #
+    
+    color_fig = plt.figure(4)
+    #import pdb;pdb.set_trace()
+    #color_im = [img_list[red], img_list[green], img_list[blue]]
+    #print(color_im.shape)
+    cim = np.ndarray(shape=(1200,1586,3),dtype=int)
+
+
+    cim[:,:,0] = img_list[red]
+    cim[:,:,1] = img_list[green]
+    cim[:,:,2] = img_list[blue]
+    
+    #scale down red
+    cim[:,:,0] = cim[:,:,0]*140/180
+    plt.imshow(cim)
+    
+    #plt.imshow()
     plt.show()
     
     
-def grab_im():    
+def nodemap(cam):
+    print("Updating nodefile to camera's node map...")
+    node_file = "daA1600-60um_gain.pfs"
+    pylon.FeaturePersistence.Load(node_file, cam.GetNodeMap(), True)
+
+def grab_im():
+    global nodemap_uploaded
     # Number of images to be grabbed.
     countOfImagesToGrab = 9
 
@@ -38,6 +121,9 @@ def grab_im():
         # Create an instant camera object with the camera device found first.
         camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
         camera.Open()
+        if not nodemap_uploaded:
+            nodemap(camera)
+            nodemap_uploaded = 1
 
         # Print the model name of the camera.
         print("Using device ", camera.GetDeviceInfo().GetModelName())
@@ -66,17 +152,18 @@ def grab_im():
             # Image grabbed successfully?
             if grabResult.GrabSucceeded():
                 # Access the image data.
-                print("SizeX: ", grabResult.Width)
-                print("SizeY: ", grabResult.Height)
+                #print("SizeX: ", grabResult.Width)
+                #print("SizeY: ", grabResult.Height)
                 img = grabResult.Array
-                print("Gray value of first pixel: ", img[0, 0])
-                print(type(img))
+                #print("Gray value of first pixel: ", img[0, 0])
+                #print(type(img))
                 img_list.append(img)
                 #import pdb;pdb.set_trace()
                 #plt.hist(img[0,:], 32, range=[0,256], label='first row', alpha=0.5)
                 #plt.hist(img[-1,:], 32, range=[0,256], label='last row', alpha=0.5)
                 #plt.legend(loc='upper right')
                 #plt.show()
+                time.sleep(1)
             else:
                 print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
             grabResult.Release()

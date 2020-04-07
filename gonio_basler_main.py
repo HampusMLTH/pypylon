@@ -3,8 +3,8 @@ from goniometer_obj import GoniometerObject
 import time
 
 def main():
-    folder_path = "/media/pi/DAPHNIA/goniometer/" + time.strftime("%Y%m%d-%H%M%S/")
-    
+    #folder_path = "/media/pi/DAPHNIA/goniometer/" + time.strftime("%Y%m%d-%H%M%S/")
+    folder_path = "/media/pi/DAPHNIA/goniometer/" + time.strftime("%Y%m%d-%H_%M_%S/")
     bc = BaslerController(folder_path)
     bc.open_camera()
     bc.update_nodemap()
@@ -15,7 +15,12 @@ def main():
     go = GoniometerObject()
     go.copy_csv(protocol_filename, folder_path)
     
-    for d in protocol:
+    time.sleep(10)
+    bc.stop_cont_acq()
+    d= [0,0,0]
+    bc.nbr_im = 1
+    #for d in protocol:
+    for i in range(0, 3):
         print("led:", d[0])
         go.led_angle = int(d[0])
         print("stage:", d[1])
@@ -26,10 +31,18 @@ def main():
         go.done_moving(go.STAGE)
         go.done_moving(go.SAMPLE)
         
-        bc.stop_cont_acq()
+        #bc.stop_cont_acq()
         bc.save_images()
-        bc.cont_acq()
-        bc.move_images(d)
+        print("--------------counter at {} mod {}".format(bc.counter, bc.counter % 9))
+        
+        #bc.cont_acq() # before move im to make continuous
+        #
+        #tmp = d
+        #tmp[0] = i
+        
+        bc.move_images([i, i, i])
+        time.sleep(2)
+        #bc.cont_acq()
         
     
     
@@ -44,7 +57,7 @@ def main():
     # in for 
     # Move to position
     # save images (put in current csv angles)
-    bc.stop_cont_acq()
+    #bc.stop_cont_acq()
     
 if __name__ == '__main__':
     main()

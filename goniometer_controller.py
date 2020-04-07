@@ -20,6 +20,7 @@ for d in protocole:
     led(BP,int(d[0]))
     stage(BP,int(d[1]))
     sample(BP,int(d[2]))
+    
     #capture_cam(camera, int(d[0]),int(d[1]),path1+sample_name+"{:04d}.bmp".format(fileNameSufix))
     #fileNameSufix=fileNameSufix+1
 #print("Finished, the files are saved in "+path1)
