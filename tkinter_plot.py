@@ -29,37 +29,13 @@ folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
 #bc = BaslerController(folder_path)
 
 
-def update_graph(canvas):
-    lowest_mean = sys.maxsize
-    index_off = -1
-    a.clear()
-
-    for i in range(0, 9):
-        
-        img = plt.imread("sample_imgs/{}.tiff".format(i))
-        a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
-        print("LED {} has a mean off: {}".format(i, img.mean()))
-        if img.mean() < lowest_mean:
-            lowest_mean = img.mean()
-            index_off = i
-
-    a.legend(loc='upper right')
+def update_exposure_time(exp_time):
+    print(exp_time)
+    #nodemap etc
 
 
-    #print(message)
-    # pullData = open("sampleText.txt","r").read()
-    # dataList = pullData.split('\n')
-    # xList = []
-    # yList = []
-    # for eachLine in dataList:
-    #     if len(eachLine) > 1:
-    #         x, y = eachLine.split(',')
-    #         xList.append(int(x))
-    #         yList.append(int(y))
+    
 
-    # a.clear()
-    # a.plot(xList, yList)
-    canvas.draw()
 
     
             
@@ -68,6 +44,9 @@ class GoniometerApp(tk.Tk):
 
     def __init__(self, *args, **kwargs):
         
+
+        self.nbr_exposures = 9
+        self.led_background = -1
         tk.Tk.__init__(self, *args, **kwargs)
 
         tk.Tk.iconbitmap(self, default="clienticon.ico")
@@ -144,16 +123,54 @@ class WhiteRefPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.controller = controller
+        self.canvas = FigureCanvasTkAgg(f, self)
+        
+        
         label = tk.Label(self, text="WhiteRefPage!", font=LARGE_FONT)
         label.pack(pady=10,padx=10)
 
         button1 = ttk.Button(self, text="Back to Home",
                             command=lambda: controller.show_frame(StartPage))
         button1.pack()
-
-        button2 = ttk.Button(self, text="Page Two",
-                            command=lambda: controller.show_frame(MotorPage))
+        button2 = ttk.Button(self, text="Update color image",
+                            command=lambda: self.show_color_image())
         button2.pack()
+
+
+        
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+        toolbar = NavigationToolbar2Tk(self.canvas, self)
+        toolbar.update()
+        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+
+    def show_color_image(self):
+        #add option of chosing red green blue leds
+        print("show colorim")
+        dynamic_range = 256#65520
+        img_off = plt.imread("sample_imgs/{}.tiff".format(self.controller.led_background))
+        img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
+        img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
+        img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
+        color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
+        red = (img_r).astype(float)
+        red = red/dynamic_range
+        green = (img_g).astype(float)
+        green = green/dynamic_range
+        blue = (img_b).astype(float)
+        blue = blue/dynamic_range
+        color_img[:,:,0] = red
+        color_img[:,:,1] = green
+        color_img[:,:,2] = blue
+        a.clear()
+        a.imshow(color_img)
+        self.canvas.draw()
+
+
+
 
 class MotorPage(tk.Frame):
 
@@ -175,27 +192,65 @@ class ExposurePage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+
+        self.controller = controller
+        self.canvas = FigureCanvasTkAgg(f, self)
+
+
+        
         label = tk.Label(self, text="Graph Page!", font=LARGE_FONT)
         label.pack(pady=10,padx=10)
 
         button1 = ttk.Button(self, text="Back to Home",
                             command=lambda: controller.show_frame(StartPage))
         button1.pack()
-        canvas = FigureCanvasTkAgg(f, self)
+        
         
         button2 = ttk.Button(self, text="update graph",
-                            command=lambda: update_graph(canvas))
+                            command=lambda: self.update_graph())
         button2.pack()
 
+        label_exp_time = tk.Label(self, text="enter exposure time below")
+        label_exp_time.pack()
+        e = tk.Entry(self)
+        e.pack()
+        #e.delete(0, END)
+        e.insert(0, "Exposure time")
         
-        
-       
-        canvas.draw()
-        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        button3 = ttk.Button(self, text="update exposure time",
+                            command=lambda: update_exposure_time(e.get()))
+        button3.pack()
 
-        toolbar = NavigationToolbar2Tk(canvas, self)
+
+       
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+        toolbar = NavigationToolbar2Tk(self.canvas, self)
         toolbar.update()
-        canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+    def update_graph(self):
+        darkest_img_mean = sys.maxsize
+        index_background = -1
+        a.clear()
+
+        for i in range(0, 9):
+            
+            img = plt.imread("sample_imgs/{}.tiff".format(i))
+            a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+            print("LED {} has a mean off: {}".format(i, img.mean()))
+            if img.mean() < darkest_img_mean:
+                darkest_img_mean = img.mean()
+                index_background = i
+        self.controller.led_background = index_background
+        a.legend(loc='upper right')
+        self.canvas.draw()
+
+
+    def help_method(self):
+        self.controller.led_background = 0
+        print(self.controller.led_background)
 
 
 app = GoniometerApp()
