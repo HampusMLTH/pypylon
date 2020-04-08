@@ -1,6 +1,8 @@
 # The code for changing pages was derived from: http://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter
 # License: http://creativecommons.org/licenses/by-sa/3.0/	
 
+
+# TODO: browse folder to initiate bc
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -11,28 +13,52 @@ from matplotlib import style
 import tkinter as tk
 from tkinter import ttk
 
+import time
+from basler_controller import BaslerController
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
 
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
 f = Figure(figsize=(5,5), dpi=100)
 a = f.add_subplot(111)
+#folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
+folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
+#bc = BaslerController(folder_path)
 
 
 def update_graph(canvas):
-    #print(message)
-    pullData = open("sampleText.txt","r").read()
-    dataList = pullData.split('\n')
-    xList = []
-    yList = []
-    for eachLine in dataList:
-        if len(eachLine) > 1:
-            x, y = eachLine.split(',')
-            xList.append(int(x))
-            yList.append(int(y))
-
+    lowest_mean = sys.maxsize
+    index_off = -1
     a.clear()
-    a.plot(xList, yList)
+
+    for i in range(0, 9):
+        
+        img = plt.imread("sample_imgs/{}.tiff".format(i))
+        a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+        print("LED {} has a mean off: {}".format(i, img.mean()))
+        if img.mean() < lowest_mean:
+            lowest_mean = img.mean()
+            index_off = i
+
+    a.legend(loc='upper right')
+
+
+    #print(message)
+    # pullData = open("sampleText.txt","r").read()
+    # dataList = pullData.split('\n')
+    # xList = []
+    # yList = []
+    # for eachLine in dataList:
+    #     if len(eachLine) > 1:
+    #         x, y = eachLine.split(',')
+    #         xList.append(int(x))
+    #         yList.append(int(y))
+
+    # a.clear()
+    # a.plot(xList, yList)
     canvas.draw()
 
     
@@ -55,7 +81,7 @@ class GoniometerApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (StartPage, PageOne, PageTwo, PageThree):
+        for F in (StartPage, ExposurePage, WhiteRefPage, MotorPage, MeasurementPage):
 
             frame = F(container, self)
 
@@ -82,24 +108,24 @@ class StartPage(tk.Frame):
 
        
 
-        button3 = ttk.Button(self, text="1. Set exposure time",
-                            command=lambda: controller.show_frame(PageThree))
-        button3.pack()
+        button1 = ttk.Button(self, text="1. Set exposure time",
+                            command=lambda: controller.show_frame(ExposurePage))
+        button1.pack()
         
-        button3 = ttk.Button(self, text="2. Calibrate to white reference",
-                            command=lambda: controller.show_frame(PageThree))
-        button3.pack()
-        
-        button2 = ttk.Button(self, text="3. Calibrate goniometer motors",
-                            command=lambda: controller.show_frame(PageTwo))
+        button2 = ttk.Button(self, text="2. Calibrate to white reference",
+                            command=lambda: controller.show_frame(WhiteRefPage))
         button2.pack()
         
-        button = ttk.Button(self, text="4. Start measurement",
-                            command=lambda: controller.show_frame(PageOne))
-        button.pack()
+        button3 = ttk.Button(self, text="3. Calibrate goniometer motors",
+                            command=lambda: controller.show_frame(MotorPage))
+        button3.pack()
+        
+        butto4 = ttk.Button(self, text="4. Start measurement",
+                            command=lambda: controller.show_frame(MeasurementPage))
+        butto4.pack()
 
 
-class PageOne(tk.Frame):
+class MeasurementPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -111,11 +137,25 @@ class PageOne(tk.Frame):
         button1.pack()
 
         button2 = ttk.Button(self, text="Page Two",
-                            command=lambda: controller.show_frame(PageTwo))
+                            command=lambda: controller.show_frame(MotorPage))
         button2.pack()
 
+class WhiteRefPage(tk.Frame):
 
-class PageTwo(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="WhiteRefPage!", font=LARGE_FONT)
+        label.pack(pady=10,padx=10)
+
+        button1 = ttk.Button(self, text="Back to Home",
+                            command=lambda: controller.show_frame(StartPage))
+        button1.pack()
+
+        button2 = ttk.Button(self, text="Page Two",
+                            command=lambda: controller.show_frame(MotorPage))
+        button2.pack()
+
+class MotorPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -127,11 +167,11 @@ class PageTwo(tk.Frame):
         button1.pack()
 
         button2 = ttk.Button(self, text="Page One",
-                            command=lambda: controller.show_frame(PageOne))
+                            command=lambda: controller.show_frame(MeasurementPage))
         button2.pack()
 
 
-class PageThree(tk.Frame):
+class ExposurePage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
