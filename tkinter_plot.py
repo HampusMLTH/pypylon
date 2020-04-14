@@ -3,6 +3,7 @@
 
 
 # TODO: browse folder to initiate bc
+#move variables to bc such as dynamic range
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -125,6 +126,10 @@ class WhiteRefPage(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.controller = controller
         self.canvas = FigureCanvasTkAgg(f, self)
+        self.color_img = None
+        self.calib_val_red = 1
+        self.calib_val_green = 1
+        self.calib_val_blue = 1
         
         
         label = tk.Label(self, text="WhiteRefPage!", font=LARGE_FONT)
@@ -136,6 +141,9 @@ class WhiteRefPage(tk.Frame):
         button2 = ttk.Button(self, text="Update color image",
                             command=lambda: self.show_color_image())
         button2.pack()
+        button3 = ttk.Button(self, text="Chose calibration area",
+                            command=lambda: self.get_area())
+        button3.pack()
 
 
         
@@ -146,6 +154,29 @@ class WhiteRefPage(tk.Frame):
         toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+    def get_area(self):
+        plt.imshow(self.color_img)
+        plt.show(block=False)
+        reference_coords = plt.ginput(2)
+        self.x_start = int(round(reference_coords[0][0]))
+        self.x_end = int(round(reference_coords[1][0]))
+        self.y_start = int(round(reference_coords[0][1]))
+        self.y_end = int(round(reference_coords[1][1]))
+        print(reference_coords)
+
+    def calibrate_area(self):
+        white_ref = self.color_img[self.x_start:self.x_end, self.y_start, self.y_end,:]
+        self.calib_val_red = white_ref[:,:,0].mean()
+        self.calib_val_green = white_ref[:,:,1].mean()
+        self.calib_val_blue = white_ref[:,:,2].mean()
+        print(self.calib_val_red)
+        print(self.calib_val_green)
+        print(self.calib_val_blue)
+        
+        self.color_img[:,:,0] = self.color_img[:,:,0] / self.calib_val_red
+        self.color_img[:,:,1] = self.color_img[:,:,1] / self.calib_val_green
+        self.color_img[:,:,2] = self.color_img[:,:,2] / self.calib_val_blue
+        self.color_img = self.color_img/np.max(self.color_img)
 
     def show_color_image(self):
         #add option of chosing red green blue leds
@@ -155,18 +186,18 @@ class WhiteRefPage(tk.Frame):
         img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
         img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
         img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
-        color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
+        self.color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
         red = (img_r).astype(float)
         red = red/dynamic_range
         green = (img_g).astype(float)
         green = green/dynamic_range
         blue = (img_b).astype(float)
         blue = blue/dynamic_range
-        color_img[:,:,0] = red
-        color_img[:,:,1] = green
-        color_img[:,:,2] = blue
+        self.color_img[:,:,0] = red
+        self.color_img[:,:,1] = green
+        self.color_img[:,:,2] = blue
         a.clear()
-        a.imshow(color_img)
+        a.imshow(self.color_img)
         self.canvas.draw()
 
 
