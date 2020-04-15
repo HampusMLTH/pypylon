@@ -44,9 +44,11 @@ bc = BaslerController(folder_path, q)
 
 
 
+
     
 
-
+def animate(i):
+    pass
     
             
 
@@ -209,12 +211,12 @@ class MotorPage(tk.Frame):
 
 
 class ExposurePage(tk.Frame):
-
+    class_canvas = None
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
         self.controller = controller
-        self.canvas = FigureCanvasTkAgg(f, self)
+        ExposurePage.class_canvas = FigureCanvasTkAgg(f, self)
 
 
         
@@ -245,39 +247,40 @@ class ExposurePage(tk.Frame):
                             command=lambda: self.close_camera())
         button4.pack()
          
-        button5 = ttk.Button(self, text="start live",
-                            command=lambda: self.start_live_view())
-        button5.pack()
+        #button5 = ttk.Button(self, text="start live",
+        #                    command=lambda: self.start_live_view())
+        #button5.pack()
         
-        button6 = ttk.Button(self, text="stop live",
-                            command=lambda: self.stop_live_view())
-        button6.pack()
+        #button6 = ttk.Button(self, text="stop live",
+        #                    command=lambda: self.stop_live_view())
+        #button6.pack()
 
 
 
        
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        ExposurePage.class_canvas.draw()
+        ExposurePage.class_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
-        toolbar = NavigationToolbar2Tk(self.canvas, self)
+        toolbar = NavigationToolbar2Tk(ExposurePage.class_canvas, self)
         toolbar.update()
-        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        ExposurePage.class_canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     
-    def draw(self):
-        self.canvas.draw()
+    def draw(i):
+        ExposurePage.class_canvas.draw()
+        print("redrawing")
             
     
     def close_camera(self):
+        self.stop_live_view()
         bc.stop_cont_acq()
         bc.close_camera()
     
     def consumer_thread(self, stop):
-        #while not stop():
+        #
         print("in thread")
-        for index in range(0, 3):
-            darkest_img_mean = sys.maxsize
-            index_background = -1
-            fig_hist.clear()
+        while not stop():
+            
+            
             i = 0
             images = []
             while i < 9:
@@ -292,24 +295,36 @@ class ExposurePage(tk.Frame):
                     #
                     images.append(img)
                     q.task_done()
-                    fig_hist.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
-                    print("LED {} has a mean off: {}".format(i, img.mean()))
-                    if img.mean() < darkest_img_mean:
-                        darkest_img_mean = img.mean()
-                        index_background = i
+                    
                     i += 1
              
-            self.controller.led_background = index_background
-            fig_hist.legend(loc='upper right')
+            
+           
             
             #self.canvas.draw()
             print("show images now")
             self.show_color_image(images)
+            
 
     def show_color_image(self, images):
         #add option of chosing red green blue leds
         print("show colorim")
         dynamic_range = 4095#65520
+        darkest_img_mean = sys.maxsize
+        index_background = -1
+        i = 0
+        fig_hist.clear()
+        for image in images:
+            img_mean = image.mean()
+            fig_hist.hist(image.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+            print("LED {} has a mean off: {}".format(i, img_mean))
+            if img_mean < darkest_img_mean:
+                darkest_img_mean = img_mean
+                index_background = i
+            i += 1
+        fig_hist.legend(loc='upper right')
+        self.controller.led_background = index_background
+        #todo fix what colors
         img_off =images[0]
         img_r =images[6]
         img_g =images[5]
@@ -329,8 +344,8 @@ class ExposurePage(tk.Frame):
         self.color_img[:,:,2] = blue
         fig_image.clear()
         fig_image.imshow(self.color_img)
-        #import pdb;pdb.set_trace()  
-        #self.canvas.draw()
+        #ExposurePage.draw(0)
+       
     
     def update_exposure_time(self, exp_time):
         print("new exp time: " + exp_time)
@@ -344,7 +359,7 @@ class ExposurePage(tk.Frame):
     
     def stop_live_view(self):
         self.stop_threads = True
-        consumer_thread.join()
+        self.cons_thread.join()
         
     def update_graph(self):
         
@@ -355,7 +370,7 @@ class ExposurePage(tk.Frame):
         #consumer_thread = threading.Thread(target=self.consumer_thread, args =(lambda : stop_threads, ))
         #consumer_thread.start()
         print("thread started")
-        
+        self.start_live_view()
         #time.sleep(1)
         #stop_threads = True
         #consumer_thread.join()
@@ -369,6 +384,7 @@ class ExposurePage(tk.Frame):
 
 
 app = GoniometerApp()
-#ani = animation.FuncAnimation(f, animate, interval=1000)
+#ani = animation.FuncAnimation(f, animate, interval=2000)
+ani = animation.FuncAnimation(f, ExposurePage.draw, interval=2000)
 app.mainloop()
         
