@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 
 from queue import Queue
 from queue import Empty
+import threading
 
 MAX_QSIZE = 10
 
@@ -30,7 +31,8 @@ LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
 f = Figure(figsize=(5,5), dpi=100)
-a = f.add_subplot(111)
+fig_image = f.add_subplot(211)
+fig_hist = f.add_subplot(212)
 #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
 #folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
 folder_path = "sample_imgs/" + time.strftime("%Y%m%d-%H%M%S/")
@@ -185,27 +187,7 @@ class WhiteRefPage(tk.Frame):
         self.color_img[:,:,2] = self.color_img[:,:,2] / self.calib_val_blue
         self.color_img = self.color_img/np.max(self.color_img)
 
-    def show_color_image(self):
-        #add option of chosing red green blue leds
-        print("show colorim")
-        dynamic_range = 256#65520
-        img_off = plt.imread("sample_imgs/{}.tiff".format(self.controller.led_background))
-        img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
-        img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
-        img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
-        self.color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
-        red = (img_r).astype(float)
-        red = red/dynamic_range
-        green = (img_g).astype(float)
-        green = green/dynamic_range
-        blue = (img_b).astype(float)
-        blue = blue/dynamic_range
-        self.color_img[:,:,0] = red
-        self.color_img[:,:,1] = green
-        self.color_img[:,:,2] = blue
-        a.clear()
-        a.imshow(self.color_img)
-        self.canvas.draw()
+   
 
 
 
@@ -239,8 +221,8 @@ class ExposurePage(tk.Frame):
         label = tk.Label(self, text="Graph Page!", font=LARGE_FONT)
         label.pack(pady=10,padx=10)
 
-        button1 = ttk.Button(self, text="Back to Home",
-                            command=lambda: controller.show_frame(StartPage))
+        button1 = ttk.Button(self, text="draw",
+                            command=lambda: self.draw())
         button1.pack()
         
         
@@ -258,6 +240,19 @@ class ExposurePage(tk.Frame):
         button3 = ttk.Button(self, text="update exposure time",
                             command=lambda: self.update_exposure_time(e.get()))
         button3.pack()
+        
+        button4 = ttk.Button(self, text="close camera",
+                            command=lambda: self.close_camera())
+        button4.pack()
+         
+        button5 = ttk.Button(self, text="start live",
+                            command=lambda: self.start_live_view())
+        button5.pack()
+        
+        button6 = ttk.Button(self, text="stop live",
+                            command=lambda: self.stop_live_view())
+        button6.pack()
+
 
 
        
@@ -268,44 +263,102 @@ class ExposurePage(tk.Frame):
         toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     
+    def draw(self):
+        self.canvas.draw()
+            
+    
+    def close_camera(self):
+        bc.stop_cont_acq()
+        bc.close_camera()
+    
+    def consumer_thread(self, stop):
+        #while not stop():
+        print("in thread")
+        for index in range(0, 3):
+            darkest_img_mean = sys.maxsize
+            index_background = -1
+            fig_hist.clear()
+            i = 0
+            images = []
+            while i < 9:
+
+                #img = plt.imread("sample_imgs/{}.tiff".format(i))
+
+                try:
+                    img = q.get(timeout=1)
+                except Empty:
+                    print("timeout reached")
+                else:
+                    #
+                    images.append(img)
+                    q.task_done()
+                    fig_hist.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+                    print("LED {} has a mean off: {}".format(i, img.mean()))
+                    if img.mean() < darkest_img_mean:
+                        darkest_img_mean = img.mean()
+                        index_background = i
+                    i += 1
+             
+            self.controller.led_background = index_background
+            fig_hist.legend(loc='upper right')
+            
+            #self.canvas.draw()
+            print("show images now")
+            self.show_color_image(images)
+
+    def show_color_image(self, images):
+        #add option of chosing red green blue leds
+        print("show colorim")
+        dynamic_range = 4095#65520
+        img_off =images[0]
+        img_r =images[6]
+        img_g =images[5]
+        img_b =images[3]
+        #img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
+        #img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
+        #img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
+        self.color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
+        red = (img_r).astype(float)
+        red = red/dynamic_range
+        green = (img_g).astype(float)
+        green = green/dynamic_range
+        blue = (img_b).astype(float)
+        blue = blue/dynamic_range
+        self.color_img[:,:,0] = red
+        self.color_img[:,:,1] = green
+        self.color_img[:,:,2] = blue
+        fig_image.clear()
+        fig_image.imshow(self.color_img)
+        #import pdb;pdb.set_trace()  
+        #self.canvas.draw()
     
     def update_exposure_time(self, exp_time):
         print("new exp time: " + exp_time)
         bc.update_value_nodemap("ExposureTimeRaw", exp_time)
         #nodemap etc
+    
+    def start_live_view(self):
+        self.stop_threads = False
+        self.cons_thread = threading.Thread(target=self.consumer_thread, args =(lambda : self.stop_threads, ))
+        self.cons_thread.start()
+    
+    def stop_live_view(self):
+        self.stop_threads = True
+        consumer_thread.join()
         
     def update_graph(self):
         
         bc.open_camera()
         bc.update_nodemap()
         bc.cont_acq()
+        stop_threads = False
+        #consumer_thread = threading.Thread(target=self.consumer_thread, args =(lambda : stop_threads, ))
+        #consumer_thread.start()
+        print("thread started")
         
-        darkest_img_mean = sys.maxsize
-        index_background = -1
-        a.clear()
-        i = 0
-        while i < 9:
-            
-            #img = plt.imread("sample_imgs/{}.tiff".format(i))
-            
-            try:
-                img = q.get(timeout=1)
-            except Empty:
-                print("timeout reached")
-            else:
-                i += 1
-                q.task_done()
-                a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
-                print("LED {} has a mean off: {}".format(i, img.mean()))
-                if img.mean() < darkest_img_mean:
-                    darkest_img_mean = img.mean()
-                    index_background = i
-        
-        bc.stop_cont_acq()
-        
-        self.controller.led_background = index_background
-        a.legend(loc='upper right')
-        self.canvas.draw()
+        #time.sleep(1)
+        #stop_threads = True
+        #consumer_thread.join()
         
         
 
