@@ -1,5 +1,6 @@
 # LoadAndSaveConfig.py
 from pypylon import pylon
+from queue import Queue
 import platform
 import time
 import threading
@@ -12,7 +13,8 @@ class BaslerController(object):
     """ Controller class for the basler camera """
     
 
-    def __init__(self, folder_path):
+    def __init__(self, folder_path, queue):
+        self.queue = queue
         self.img = pylon.PylonImage()
         self.cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
         self.nbr_im = 9
@@ -68,7 +70,8 @@ class BaslerController(object):
         
     def stop_cont_acq(self):
         self._stop_cont_acq = True
-        #print("stop sent")
+        print("stop sent")
+        
         self.thread_cont.join()
     
     def save_images(self, folder_name):
@@ -80,21 +83,27 @@ class BaslerController(object):
         self.cam.StartGrabbing()
         t_grab = time.time()
         nbr_imgs_saved = 0
-        for i in range(1000000):
-            if stop():
-                #print("stopping cont acq")
-                break
+        while not stop():
+                
             with self.cam.RetrieveResult(2000) as result:
                 self.counter = self.counter + 1
+                
+                print("putting")
+                self.queue.put(result.Array)                
+                print("bc queue size: {}".format(self.queue.qsize()))
                 # Calling AttachGrabResultBuffer creates another reference to the
                 # grab result buffer. This prevents the buffer's reuse for grabbing.
-                self.img.AttachGrabResultBuffer(result)
+                
+                #import pdb;pdb.set_trace()
+                #self.img.AttachGrabResultBuffer(result)
 
                 # In order to make it possible to reuse the grab result for grabbing
                 # again, we have to release the image (effectively emptying the
                 # image object).
+               
                 if save_images():
                     print("save images")
+                    self.img.AttachGrabResultBuffer(result)
                     nbr_imgs_saved += 1
                     filename = "%d.tiff" % (self.counter % 9)
                     self.img.Save(pylon.ImageFileFormat_Tiff , filename)
@@ -104,7 +113,7 @@ class BaslerController(object):
                         #check if previous move images is done, otherwise throw error
                         if self.thread_move:
                             if self.thread_move.isAlive():
-                                raise BefferError("last batch of are currently being moved, you should lower frame rate or get a faster harddrive.")
+                                raise BufferError("last batch of are currently being moved, you should lower frame rate or get a faster harddrive.")
                         self.thread_move = threading.Thread(target=self._move_images, args=(folder_name(),))
                         self.thread_move.start()
                 
@@ -114,7 +123,8 @@ class BaslerController(object):
                    # else:
                         #print("not active")
                 #print(self.counter % 9, end = ',')
-                self.img.Release()
+                
+                #self.img.Release()
                 #if i % 10 == 0:
                     #print(i)
                     #print("counter at %d" % self.counter)

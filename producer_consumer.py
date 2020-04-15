@@ -14,6 +14,7 @@ class Producer:
     def run(self):
         for _ in range(self.buf_size):
             self.queue.put(random.randint(0, 100))
+            # here we do the cont acq
 
 
 class Consumer:
@@ -25,6 +26,7 @@ class Consumer:
             item = self.queue.get()
             self.queue.task_done()
             print(item)
+            # here we either display or display&save images
 
 
 def main():
