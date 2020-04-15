@@ -25,8 +25,14 @@ from queue import Empty
 import threading
 
 MAX_QSIZE = 10
-
-
+LED_WAVELENGTHS = ["365 nm",
+                   "405",
+                   "430",
+                   "490",
+                   "525",
+                   "630",
+                   "810",
+                   "940",]
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
@@ -254,7 +260,21 @@ class ExposurePage(tk.Frame):
         #button6 = ttk.Button(self, text="stop live",
         #                    command=lambda: self.stop_live_view())
         #button6.pack()
-
+        
+        self.red_LED = ttk.Combobox(self, 
+                            values=LED_WAVELENGTHS, state="readonly")
+        self.green_LED = ttk.Combobox(self, 
+                            values=LED_WAVELENGTHS, state="readonly")
+        self.blue_LED = ttk.Combobox(self, 
+                            values=LED_WAVELENGTHS, state="readonly")
+        
+        self.red_LED.pack()
+        self.red_LED.current(2)
+        self.green_LED.pack()
+        self.green_LED.current(4)
+        self.blue_LED.pack()
+        self.blue_LED.current(5)
+        
 
 
        
@@ -280,7 +300,7 @@ class ExposurePage(tk.Frame):
         print("in thread")
         while not stop():
             
-            
+            print("----------stop is {}".format(stop()))
             i = 0
             images = []
             while i < 9:
@@ -290,7 +310,9 @@ class ExposurePage(tk.Frame):
                 try:
                     img = q.get(timeout=1)
                 except Empty:
-                    print("timeout reached")
+                    print("timeout reached, i is {}".format(i))
+                    if stop():
+                        break
                 else:
                     #
                     images.append(img)
@@ -304,11 +326,17 @@ class ExposurePage(tk.Frame):
             #self.canvas.draw()
             print("show images now")
             self.show_color_image(images)
+        print("bottom")
             
 
     def show_color_image(self, images):
         #add option of chosing red green blue leds
         print("show colorim")
+        print("red is {} green is {} blue is {}".format(self.red_LED.get(), 
+                                                        self.green_LED.get(), 
+                                                        self.blue_LED.get(),))
+        #self.comboExample.current()
+        
         dynamic_range = 4095#65520
         darkest_img_mean = sys.maxsize
         index_background = -1
@@ -359,7 +387,7 @@ class ExposurePage(tk.Frame):
     
     def stop_live_view(self):
         self.stop_threads = True
-        self.cons_thread.join()
+        #self.cons_thread.join()
         
     def update_graph(self):
         
