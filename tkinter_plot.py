@@ -20,19 +20,26 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+from queue import Queue
+from queue import Empty
+
+MAX_QSIZE = 10
+
+
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
 f = Figure(figsize=(5,5), dpi=100)
 a = f.add_subplot(111)
 #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
-folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
+#folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
+folder_path = "sample_imgs/" + time.strftime("%Y%m%d-%H%M%S/")
+q = Queue(maxsize=MAX_QSIZE)
+bc = BaslerController(folder_path, q)
 #bc = BaslerController(folder_path)
 
 
-def update_exposure_time(exp_time):
-    print(exp_time)
-    #nodemap etc
+
 
 
     
@@ -249,7 +256,7 @@ class ExposurePage(tk.Frame):
         e.insert(0, "Exposure time")
         
         button3 = ttk.Button(self, text="update exposure time",
-                            command=lambda: update_exposure_time(e.get()))
+                            command=lambda: self.update_exposure_time(e.get()))
         button3.pack()
 
 
@@ -260,23 +267,47 @@ class ExposurePage(tk.Frame):
         toolbar = NavigationToolbar2Tk(self.canvas, self)
         toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
+    
+    
+    def update_exposure_time(self, exp_time):
+        print("new exp time: " + exp_time)
+        bc.update_value_nodemap("ExposureTimeRaw", exp_time)
+        #nodemap etc
+        
     def update_graph(self):
+        
+        bc.open_camera()
+        bc.update_nodemap()
+        bc.cont_acq()
+        
         darkest_img_mean = sys.maxsize
         index_background = -1
         a.clear()
-
-        for i in range(0, 9):
+        i = 0
+        while i < 9:
             
-            img = plt.imread("sample_imgs/{}.tiff".format(i))
-            a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
-            print("LED {} has a mean off: {}".format(i, img.mean()))
-            if img.mean() < darkest_img_mean:
-                darkest_img_mean = img.mean()
-                index_background = i
+            #img = plt.imread("sample_imgs/{}.tiff".format(i))
+            
+            try:
+                img = q.get(timeout=1)
+            except Empty:
+                print("timeout reached")
+            else:
+                i += 1
+                q.task_done()
+                a.hist(img.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+                print("LED {} has a mean off: {}".format(i, img.mean()))
+                if img.mean() < darkest_img_mean:
+                    darkest_img_mean = img.mean()
+                    index_background = i
+        
+        bc.stop_cont_acq()
+        
         self.controller.led_background = index_background
         a.legend(loc='upper right')
         self.canvas.draw()
+        
+        
 
 
     def help_method(self):

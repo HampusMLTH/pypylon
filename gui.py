@@ -3,13 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import sys
+from queue import Queue
+from queue import Empty
 
 def main():
     nbr_im=9
     
-    folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" + time.strftime("%Y%m%d-%H%M%S/")
+    #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" + time.strftime("%Y%m%d-%H%M%S/")
     gui_folder_name = "gui_test_1"
-    bc = BaslerController(folder_path)
+    folder_path = "sample_imgs/" + time.strftime("%Y%m%d-%H%M%S/")
+    q = Queue(maxsize=MAX_QSIZE)
+    bc = BaslerController(folder_path, q)
+    
     #bc.close_camera()
     bc.open_camera()
     bc.update_nodemap()
