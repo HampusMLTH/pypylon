@@ -33,6 +33,9 @@ LED_WAVELENGTHS = ["365 nm",
                    "630",
                    "810",
                    "940",]
+FIELDS = ["ExposureTimeRaw",
+          "GainRaw",
+          "AccuisitionRateRaw"]
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
@@ -46,7 +49,7 @@ q = Queue(maxsize=MAX_QSIZE)
 bc = None#BaslerController(folder_path, q)
 #bc = BaslerController(folder_path)
 
-
+from tkinter import filedialog
 
 
 
@@ -78,7 +81,7 @@ class GoniometerApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (StartPage, ExposurePage, WhiteRefPage, MotorPage, MeasurementPage):
+        for F in (StartPage, ExposurePage):
 
             frame = F(container, self)
 
@@ -98,192 +101,143 @@ class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self,parent)
-        label = tk.Label(self, text="Start Page", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
+        #label = tk.Label(self, text="Gonio", font=LARGE_FONT)
+        #label.pack(pady=10,padx=10)
 
       
 
        
 
-        button1 = ttk.Button(self, text="1. Set exposure time",
+        button_start_cam = ttk.Button(self, text="start camera",
                             command=lambda: controller.show_frame(ExposurePage))
-        button1.pack()
+        button_start_cam.grid(row=0, column=0, columnspan=3)
         
-        button2 = ttk.Button(self, text="2. Calibrate to white reference",
+        button_read_value = ttk.Button(self, text="read value",
                             command=lambda: controller.show_frame(WhiteRefPage))
-        button2.pack()
+        button_read_value.grid(row=1,column=0)
         
-        button3 = ttk.Button(self, text="3. Calibrate goniometer motors",
+        button_set_value = ttk.Button(self, text="set value",
                             command=lambda: controller.show_frame(MotorPage))
-        button3.pack()
+        button_set_value.grid(row=1,column=1)
+
+
+        field_combo = ttk.Combobox(self, values=FIELDS, state="readonly")
+        field_combo.grid(row=2, column=0)
+        field_combo.current(0)
+        value_entry = tk.Entry(self)
+        value_entry.grid(row=2,column=1)
+        value_entry.insert(0, "value...")
         
-        butto4 = ttk.Button(self, text="4. Start measurement",
-                            command=lambda: controller.show_frame(MeasurementPage))
-        butto4.pack()
-
-
-class MeasurementPage(tk.Frame):
-
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        label = tk.Label(self, text="Page One!!!", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
-
-        button1 = ttk.Button(self, text="Back to Home",
-                            command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-
-        button2 = ttk.Button(self, text="Page Two",
-                            command=lambda: controller.show_frame(MotorPage))
-        button2.pack()
-
-class WhiteRefPage(tk.Frame):
-
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        self.controller = controller
-        self.canvas = FigureCanvasTkAgg(f, self)
-        self.color_img = None
-        self.calib_val_red = 1
-        self.calib_val_green = 1
-        self.calib_val_blue = 1
+        unit_label = tk.Label(self, text="ms")
+        unit_label.grid(row=2,column=2)
         
+        red_label = tk.Label(self, text="red")
+        red_label.grid(row=3, column=0)
+        self.red_LED = ttk.Combobox(self, values=LED_WAVELENGTHS, state="readonly")
+        self.red_LED.grid(row=3,column=1, columnspan=2)
+        self.red_LED.current(5)
+
+        green_label = tk.Label(self, text="green")
+        green_label.grid(row=4, column=0)
+        self.green_LED = ttk.Combobox(self, values=LED_WAVELENGTHS, state="readonly")
+        self.green_LED.grid(row=4,column=1, columnspan=2)
+        self.green_LED.current(4)
+
+        blue_label = tk.Label(self, text="blue")
+        blue_label.grid(row=5, column=0)
+        self.blue_LED = ttk.Combobox(self, values=LED_WAVELENGTHS, state="readonly")
+        self.blue_LED.grid(row=5,column=1, columnspan=2)
+        self.blue_LED.current(2)
+    
+        button_choose_protocol = ttk.Button(self, text="choose protocol file",
+                            command=lambda: self.file_dialog())
+        button_choose_protocol.grid(row=6,column=0,columnspan=3)
+        self.label_protocol_filename =  blue_label = ttk.Label(self, text="")
+        self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
-        label = tk.Label(self, text="WhiteRefPage!", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
-
-        button1 = ttk.Button(self, text="Back to Home",
-                            command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-        button2 = ttk.Button(self, text="Update color image",
-                            command=lambda: self.show_color_image())
-        button2.pack()
-        button3 = ttk.Button(self, text="Chose calibration area",
-                            command=lambda: self.get_area())
-        button3.pack()
-
-
-        
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2Tk(self.canvas, self)
-        toolbar.update()
-        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-    def get_area(self):
-        plt.imshow(self.color_img)
-        plt.show(block=False)
-        reference_coords = plt.ginput(2)
-        self.x_start = int(round(reference_coords[0][0]))
-        self.x_end = int(round(reference_coords[1][0]))
-        self.y_start = int(round(reference_coords[0][1]))
-        self.y_end = int(round(reference_coords[1][1]))
-        print(reference_coords)
-
-    def calibrate_area(self):
-        white_ref = self.color_img[self.x_start:self.x_end, self.y_start, self.y_end,:]
-        self.calib_val_red = white_ref[:,:,0].mean()
-        self.calib_val_green = white_ref[:,:,1].mean()
-        self.calib_val_blue = white_ref[:,:,2].mean()
-        print(self.calib_val_red)
-        print(self.calib_val_green)
-        print(self.calib_val_blue)
-        
-        self.color_img[:,:,0] = self.color_img[:,:,0] / self.calib_val_red
-        self.color_img[:,:,1] = self.color_img[:,:,1] / self.calib_val_green
-        self.color_img[:,:,2] = self.color_img[:,:,2] / self.calib_val_blue
-        self.color_img = self.color_img/np.max(self.color_img)
-
-   
+        button_start_measurement = ttk.Button(self, text="start measurement",
+                            command=lambda: self.file_dialog())
+        button_start_measurement.grid(row=8,column=0,columnspan=3)
 
 
 
+    def file_dialog(self):
+        self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
+        self.label_protocol_filename.configure(text=self.filename)
 
-class MotorPage(tk.Frame):
 
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        label = tk.Label(self, text="Page Two!!!", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
 
-        button1 = ttk.Button(self, text="Back to Home",
-                            command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-
-        button2 = ttk.Button(self, text="Page One",
-                            command=lambda: controller.show_frame(MeasurementPage))
-        button2.pack()
 
 
 class ExposurePage(tk.Frame):
     class_canvas = None
     def __init__(self, parent, controller):
+        pass
         tk.Frame.__init__(self, parent)
 
         self.controller = controller
         ExposurePage.class_canvas = FigureCanvasTkAgg(f, self)
-
-
-        
-        label = tk.Label(self, text="Graph Page!", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
-
-        button1 = ttk.Button(self, text="draw",
-                            command=lambda: self.draw())
-        button1.pack()
-        
-        
-        button2 = ttk.Button(self, text="update graph",
-                            command=lambda: self.update_graph())
-        button2.pack()
-
-        label_exp_time = tk.Label(self, text="enter exposure time below")
-        label_exp_time.pack()
-        e = tk.Entry(self)
-        e.pack()
-        #e.delete(0, END)
-        e.insert(0, "Exposure time")
-        
-        button3 = ttk.Button(self, text="update exposure time",
-                            command=lambda: self.update_exposure_time(e.get()))
-        button3.pack()
-        
-        button4 = ttk.Button(self, text="close camera",
-                            command=lambda: self.close_camera())
-        button4.pack()
-         
-        #button5 = ttk.Button(self, text="start live",
-        #                    command=lambda: self.start_live_view())
-        #button5.pack()
-        
-        #button6 = ttk.Button(self, text="stop live",
-        #                    command=lambda: self.stop_live_view())
-        #button6.pack()
-        
-        self.red_LED = ttk.Combobox(self, 
-                            values=LED_WAVELENGTHS, state="readonly")
-        self.green_LED = ttk.Combobox(self, 
-                            values=LED_WAVELENGTHS, state="readonly")
-        self.blue_LED = ttk.Combobox(self, 
-                            values=LED_WAVELENGTHS, state="readonly")
-        
-        self.red_LED.pack()
-        self.red_LED.current(2)
-        self.green_LED.pack()
-        self.green_LED.current(4)
-        self.blue_LED.pack()
-        self.blue_LED.current(5)
-        
-
-
-       
-        ExposurePage.class_canvas.draw()
-        ExposurePage.class_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2Tk(ExposurePage.class_canvas, self)
-        toolbar.update()
-        ExposurePage.class_canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+##
+##
+##        
+##        label = tk.Label(self, text="Graph Page!", font=LARGE_FONT)
+##        label.pack(pady=10,padx=10)
+##
+##        button1 = ttk.Button(self, text="draw",
+##                            command=lambda: self.draw())
+##        button1.pack()
+##        
+##        
+##        button2 = ttk.Button(self, text="update graph",
+##                            command=lambda: self.update_graph())
+##        button2.pack()
+##
+##        label_exp_time = tk.Label(self, text="enter exposure time below")
+##        label_exp_time.pack()
+##        e = tk.Entry(self)
+##        e.pack()
+##        #e.delete(0, END)
+##        e.insert(0, "Exposure time")
+##        
+##        button3 = ttk.Button(self, text="update exposure time",
+##                            command=lambda: self.update_exposure_time(e.get()))
+##        button3.pack()
+##        
+##        button4 = ttk.Button(self, text="close camera",
+##                            command=lambda: self.close_camera())
+##        button4.pack()
+##         
+##        #button5 = ttk.Button(self, text="start live",
+##        #                    command=lambda: self.start_live_view())
+##        #button5.pack()
+##        
+##        #button6 = ttk.Button(self, text="stop live",
+##        #                    command=lambda: self.stop_live_view())
+##        #button6.pack()
+##        
+##        self.red_LED = ttk.Combobox(self, 
+##                            values=LED_WAVELENGTHS, state="readonly")
+##        self.green_LED = ttk.Combobox(self, 
+##                            values=LED_WAVELENGTHS, state="readonly")
+##        self.blue_LED = ttk.Combobox(self, 
+##                            values=LED_WAVELENGTHS, state="readonly")
+##        
+##        self.red_LED.pack()
+##        self.red_LED.current(2)
+##        self.green_LED.pack()
+##        self.green_LED.current(4)
+##        self.blue_LED.pack()
+##        self.blue_LED.current(5)
+##        
+##
+##
+##       
+##        ExposurePage.class_canvas.draw()
+##        ExposurePage.class_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+##
+##        toolbar = NavigationToolbar2Tk(ExposurePage.class_canvas, self)
+##        toolbar.update()
+##        ExposurePage.class_canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     
     def draw(i):
         ExposurePage.class_canvas.draw()
