@@ -15,7 +15,7 @@ import tkinter as tk
 from tkinter import ttk
 
 import time
-from basler_controller import BaslerController
+#from basler_controller import BaslerController
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,7 +43,7 @@ fig_hist = f.add_subplot(212)
 #folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
 folder_path = "sample_imgs/" + time.strftime("%Y%m%d-%H%M%S/")
 q = Queue(maxsize=MAX_QSIZE)
-bc = BaslerController(folder_path, q)
+bc = None#BaslerController(folder_path, q)
 #bc = BaslerController(folder_path)
 
 
