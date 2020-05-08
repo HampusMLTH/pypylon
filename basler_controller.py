@@ -6,6 +6,7 @@ import time
 import threading
 import shutil
 import os
+import imageio
 
 #import logging, sys
 
@@ -102,11 +103,13 @@ class BaslerController(object):
                 # image object).
                
                 if save_images():
+                    import pdb;pdb.set_trace()
                     print("save images")
-                    self.img.AttachGrabResultBuffer(result)
+                    #self.img.AttachGrabResultBuffer(result)
                     nbr_imgs_saved += 1
                     filename = "%d.tiff" % (self.counter % 9)
-                    self.img.Save(pylon.ImageFileFormat_Tiff , filename)
+                    #self.img.Save(pylon.ImageFileFormat_Tiff , filename)
+                    imageio.imwrite(filename, result.Array)
                     if nbr_imgs_saved == self.nbr_im:
                         self._save_images = False
                         #move images

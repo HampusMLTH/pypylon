@@ -44,3 +44,4 @@ scripts/reference_types.txt
 
 #ignore generated html
 pypylon.*.html
+*.pfs

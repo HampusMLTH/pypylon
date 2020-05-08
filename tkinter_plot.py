@@ -26,13 +26,13 @@ import threading
 
 MAX_QSIZE = 10
 LED_WAVELENGTHS = ["365 nm",
-                   "405",
-                   "430",
-                   "490",
-                   "525",
-                   "630",
-                   "810",
-                   "940",]
+                   "405 nm",
+                   "430 nm",
+                   "490 nm",
+                   "525 nm",
+                   "630 nm",
+                   "810 nm",
+                   "940 nm",]
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
@@ -226,32 +226,44 @@ class ExposurePage(tk.Frame):
 
 
         
-        label = tk.Label(self, text="Graph Page!", font=LARGE_FONT)
+        label = tk.Label(self, text="Goniometer live view", font=LARGE_FONT)
         label.pack(pady=10,padx=10)
 
-        button1 = ttk.Button(self, text="draw",
-                            command=lambda: self.draw())
-        button1.pack()
         
         
-        button2 = ttk.Button(self, text="update graph",
+        button2 = ttk.Button(self, text="start",
                             command=lambda: self.update_graph())
         button2.pack()
 
-        label_exp_time = tk.Label(self, text="enter exposure time below")
-        label_exp_time.pack()
+        #label_exp_time = tk.Label(self, text="enter exposure time below")
+        #label_exp_time.pack()
         e = tk.Entry(self)
         e.pack()
         #e.delete(0, END)
         e.insert(0, "Exposure time")
         
         button3 = ttk.Button(self, text="update exposure time",
-                            command=lambda: self.update_exposure_time(e.get()))
+                            command=lambda: self.update_nodemap_field("ExposureTimeRaw", e.get()))
         button3.pack()
+        #TODO: do a combobox with different fields and a read value button and a set value button 
+        # label_gain = tk.Label(self, text="enter gain below")
+        # label_gain.pack()
+        # e_gain = tk.Entry(self)
+        # e_gain.pack()
+        # #e.delete(0, END)
+        # e_gain.insert(0, "gain")
+        
+        # button_gain = ttk.Button(self, text="update gain",
+        #                     command=lambda: self.update_nodemap_field("GainRaw", e_gain.get()))
+        # button_gain.pack()
         
         button4 = ttk.Button(self, text="close camera",
                             command=lambda: self.close_camera())
         button4.pack()
+
+        button_save_images = ttk.Button(self, text="save images",
+                            command=lambda: bc.save_images("test_images"))
+        button_save_images.pack()
          
         #button5 = ttk.Button(self, text="start live",
         #                    command=lambda: self.start_live_view())
@@ -269,11 +281,11 @@ class ExposurePage(tk.Frame):
                             values=LED_WAVELENGTHS, state="readonly")
         
         self.red_LED.pack()
-        self.red_LED.current(2)
+        self.red_LED.current(5)
         self.green_LED.pack()
         self.green_LED.current(4)
         self.blue_LED.pack()
-        self.blue_LED.current(5)
+        self.blue_LED.current(2)
         
 
 
@@ -298,8 +310,9 @@ class ExposurePage(tk.Frame):
     def consumer_thread(self, stop):
         #
         print("in thread")
+        temp = 0
         while not stop():
-            
+            temp += 1
             print("----------stop is {}".format(stop()))
             i = 0
             images = []
@@ -315,7 +328,7 @@ class ExposurePage(tk.Frame):
                         break
                 else:
                     #
-                    images.append(img)
+                    images.append(img.astype('int16'))
                     q.task_done()
                     
                     i += 1
@@ -325,11 +338,14 @@ class ExposurePage(tk.Frame):
             
             #self.canvas.draw()
             print("show images now")
-            self.show_color_image(images)
+            self.show_color_image(images, temp)
+            
+        
+            
         print("bottom")
             
 
-    def show_color_image(self, images):
+    def show_color_image(self, images, temp):
         #add option of chosing red green blue leds
         print("show colorim")
         print("red is {} green is {} blue is {}".format(self.red_LED.get(), 
@@ -350,13 +366,19 @@ class ExposurePage(tk.Frame):
                 darkest_img_mean = img_mean
                 index_background = i
             i += 1
+        print("off is LED {}".format(index_background))
         fig_hist.legend(loc='upper right')
         self.controller.led_background = index_background
         #todo fix what colors
-        img_off =images[0]
-        img_r =images[6]
-        img_g =images[5]
-        img_b =images[3]
+        img_off =images[index_background]
+        img_r =(images[(index_background + self.red_LED.current()) % 9] - img_off).clip(min=0)
+        img_g =(images[(index_background + self.green_LED.current()) % 9] - img_off).clip(min=0)
+        img_b =(images[(index_background + self.blue_LED.current()) % 9] - img_off).clip(min=0)
+        print("red min {} mean {} max {}".format(img_r.min(),img_r.mean(),img_r.max()))
+        print("green min {} mean {} max {}".format(img_g.min(),img_g.mean(),img_g.max()))
+        print("blue min {} mean {} max {}".format(img_b.min(),img_b.mean(),img_b.max()))
+        
+        
         #img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
         #img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
         #img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
@@ -372,12 +394,15 @@ class ExposurePage(tk.Frame):
         self.color_img[:,:,2] = blue
         fig_image.clear()
         fig_image.imshow(self.color_img)
+        
+        import imageio
+        imageio.imwrite("{}_col_test.tiff".format(temp), self.color_img)
         #ExposurePage.draw(0)
        
     
-    def update_exposure_time(self, exp_time):
-        print("new exp time: " + exp_time)
-        bc.update_value_nodemap("ExposureTimeRaw", exp_time)
+    def update_nodemap_field(self, field, value):
+        print("new {} is {}".format(field, value))
+        bc.update_value_nodemap(field, value)
         #nodemap etc
     
     def start_live_view(self):
