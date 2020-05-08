@@ -36,3 +36,21 @@ NodeMap.pfs
 
 #ignore generated html
 pypylon.*.html
+*.tiff
+*.pfs
+.ipynb_checkpoints/basler_controller-checkpoint.py
+.ipynb_checkpoints/debug_basler-checkpoint.py
+.ipynb_checkpoints/goniometer_lib-checkpoint.py
+.ipynb_checkpoints/gui-checkpoint.py
+.ipynb_checkpoints/producer_consumer-checkpoint.py
+.ipynb_checkpoints/sampleText-checkpoint.txt
+.ipynb_checkpoints/tkinter_plot-checkpoint.py
+samples/.ipynb_checkpoints/basler_controller-checkpoint.py
+samples/.ipynb_checkpoints/led_main-checkpoint.py
+samples/.ipynb_checkpoints/parametrizecameraloadandsaveconfig-checkpoint.py
+samples/.ipynb_checkpoints/pixelformatandaoiconfiguration-checkpoint.py
+samples/.ipynb_checkpoints/processing-checkpoint.py
+samples/.ipynb_checkpoints/save_image-checkpoint.py
+samples/.ipynb_checkpoints/test_basler_controller-checkpoint.py
+samples/.ipynb_checkpoints/utilityimageformatconverter-checkpoint.py
+samples/.ipynb_checkpoints/utilityimageformatconverter1-checkpoint.py

@@ -110,7 +110,11 @@ class StartPage(tk.Frame):
 
         button_start_cam = ttk.Button(self, text="start camera",
                             command=lambda: controller.show_frame(ExposurePage))
-        button_start_cam.grid(row=0, column=0, columnspan=3)
+        button_start_cam.grid(row=0, column=0)
+        
+        button_stop_cam = ttk.Button(self, text="stop camera",
+                            command=lambda: controller.show_frame(ExposurePage))
+        button_stop_cam.grid(row=0, column=1)
         
         button_read_value = ttk.Button(self, text="read value",
                             command=lambda: controller.show_frame(WhiteRefPage))
@@ -155,10 +159,14 @@ class StartPage(tk.Frame):
         self.label_protocol_filename =  blue_label = ttk.Label(self, text="")
         self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
+        self.display_cb = tk.IntVar()
+        ttk.Checkbutton(self, text="display live image", variable=self.display_cb).grid(row=8, column=0, sticky=tk.E)
+        self.save_cb = tk.IntVar()
+        ttk.Checkbutton(self, text="save images", variable=self.save_cb).grid(row=8, column=1, sticky=tk.E)
         button_start_measurement = ttk.Button(self, text="start measurement",
                             command=lambda: self.file_dialog())
-        button_start_measurement.grid(row=8,column=0,columnspan=3)
-
+        button_start_measurement.grid(row=9,column=0,columnspan=3)
+    
 
 
     def file_dialog(self):
