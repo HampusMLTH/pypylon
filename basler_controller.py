@@ -32,19 +32,27 @@ class BaslerController(object):
     def close_camera(self):
         self.cam.Close()
     
-    def update_value_nodemap(self, field, new_value):
+    def update_nodemap_value(self, field, new_value):
         file = open(self.node_file, "r")
         new_file_contents = ""
         for line in file:
             if field in line:
-                print(field + "updated from {} to {}".format(line.split()[1], new_value))
-                line = line.replace(line.split()[1], new_value)
+                print(field + "updated from {} to {}".format(line.split()[1], str(new_value)))
+                line = line.replace(line.split()[1], str(new_value))
             new_file_contents += line
         file.close()
         file = open(self.node_file, "w")
         file.write(new_file_contents)
         file.close()
-        
+    
+    def get_nodemap_value(self, field):
+        file = open(self.node_file, "r")
+        for line in file:
+             if field in line:
+                print("{} is {}".format(field, line.split()[1]))
+                return(int(line.split()[1])) # TODO: are some values float?
+        raise KeyError("{} not in Nodefile {}".format(field, self.node_file))
+                    
     def update_nodemap(self):
         # The name of the pylon file handle
         

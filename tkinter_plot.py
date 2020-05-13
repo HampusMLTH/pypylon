@@ -13,6 +13,7 @@ from matplotlib import style
 
 import tkinter as tk
 from tkinter import ttk
+#import tkinter.messagebox
 
 import time
 from basler_controller import BaslerController
@@ -126,20 +127,20 @@ class StartPage(tk.Frame):
         button_stop_cam.grid(row=0, column=1)
         
         button_read_value = ttk.Button(self, text="read value",
-                            command=lambda: controller.show_frame(WhiteRefPage))
+                            command=lambda: self.get_nodemap_value())
         button_read_value.grid(row=1,column=0)
         
         button_set_value = ttk.Button(self, text="set value",
-                            command=lambda: self.update_nodemap_field("ExposureTimeRaw", None))#e.get()))
+                            command=lambda: self.update_nodemap_field())#e.get()))
         button_set_value.grid(row=1,column=1)
 
 
-        field_combo = ttk.Combobox(self, values=FIELDS, state="readonly")
-        field_combo.grid(row=2, column=0)
-        field_combo.current(0)
-        value_entry = tk.Entry(self)
-        value_entry.grid(row=2,column=1)
-        value_entry.insert(0, "value...")
+        self.field_combo = ttk.Combobox(self, values=FIELDS, state="readonly")
+        self.field_combo.grid(row=2, column=0)
+        self.field_combo.current(0)
+        self.value_entry = tk.Entry(self)
+        self.value_entry.grid(row=2,column=1)
+        self.value_entry.insert(0, "value...")
         
         unit_label = tk.Label(self, text="ms")
         unit_label.grid(row=2,column=2)
@@ -322,10 +323,21 @@ class StartPage(tk.Frame):
 
        
     
-    def update_nodemap_field(self, field, value):
-        print("new {} is {}".format(field, value))
-        bc.update_value_nodemap(field, value)
-        #nodemap etc
+    def update_nodemap_field(self):
+        try:
+            value = int(self.value_entry.get())
+        except ValueError:
+            tk.messagebox.showwarning(title="Error", message="Type a number")
+        else:
+            bc.update_nodemap_value(self.field_combo.get(), value)
+            print("{} is updated to {}".format(self.value_entry.get(), value))
+            
+
+    
+    def get_nodemap_value(self):
+        print(bc.get_nodemap_value(self.field_combo.get()))
+        self.value_entry.delete(0, tk.END)
+        self.value_entry.insert(0,str(bc.get_nodemap_value(self.field_combo.get())))
     
     def start_live_view(self):
         self.stop_threads = False
