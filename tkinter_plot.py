@@ -37,6 +37,9 @@ LED_WAVELENGTHS = ["365 nm",
 FIELDS = ["ExposureTimeRaw",
           "GainRaw",
           "AccuisitionRateRaw"]
+UNITS = ["µs",
+          "linear gain",
+          "?"]
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
@@ -142,8 +145,8 @@ class StartPage(tk.Frame):
         self.value_entry.grid(row=2,column=1)
         self.value_entry.insert(0, "value...")
         
-        unit_label = tk.Label(self, text="ms")
-        unit_label.grid(row=2,column=2)
+        self.unit_label = tk.Label(self, text="")
+        self.unit_label.grid(row=2,column=2)
         
         red_label = tk.Label(self, text="red")
         red_label.grid(row=3, column=0)
@@ -330,6 +333,7 @@ class StartPage(tk.Frame):
             tk.messagebox.showwarning(title="Error", message="Type a number")
         else:
             bc.update_nodemap_value(self.field_combo.get(), value)
+            self.unit_label["text"] = UNITS[self.field_combo.current()]
             print("{} is updated to {}".format(self.value_entry.get(), value))
             
 
@@ -338,6 +342,8 @@ class StartPage(tk.Frame):
         print(bc.get_nodemap_value(self.field_combo.get()))
         self.value_entry.delete(0, tk.END)
         self.value_entry.insert(0,str(bc.get_nodemap_value(self.field_combo.get())))
+        
+        self.unit_label["text"] = UNITS[self.field_combo.current()]
     
     def start_live_view(self):
         self.stop_threads = False
