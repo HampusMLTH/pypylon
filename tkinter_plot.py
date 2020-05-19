@@ -13,6 +13,7 @@ from matplotlib import style
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 #import tkinter.messagebox
 
 import time
@@ -26,7 +27,8 @@ from queue import Empty
 import threading
 
 MAX_QSIZE = 10
-LED_WAVELENGTHS = ["365 nm",
+LED_WAVELENGTHS = ["background",
+                   "365 nm",
                    "405 nm",
                    "430 nm",
                    "490 nm",
@@ -43,17 +45,19 @@ UNITS = ["µs",
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
-f = Figure(figsize=(5,5), dpi=100)
+f = Figure(figsize=(10,9), dpi=100)
 fig_image = f.add_subplot(211)
 fig_hist = f.add_subplot(212)
 #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
 #folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
-folder_path = "sample_imgs/" + time.strftime("%Y%m%d-%H%M%S/")
+#test_folder = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
+test_folder = "C:/Users/Hampus/Desktop/testtest"
+folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
 q = Queue(maxsize=MAX_QSIZE)
 bc = BaslerController(folder_path, q)
 #bc = BaslerController(folder_path)
 
-from tkinter import filedialog
+
 
 
 
@@ -71,7 +75,7 @@ class GoniometerApp(tk.Tk):
         
 
         self.nbr_exposures = 9
-        self.led_background = -1
+        self.led_background_list = []
         tk.Tk.__init__(self, *args, **kwargs)
 
         tk.Tk.iconbitmap(self, default="clienticon.ico")
@@ -117,7 +121,7 @@ class StartPage(tk.Frame):
         self.controller = controller
         StartPage.class_canvas = FigureCanvasTkAgg(f, self)
 
-      
+        
 
         
 
@@ -172,20 +176,33 @@ class StartPage(tk.Frame):
         self.label_protocol_filename =  blue_label = ttk.Label(self, text="")
         self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
+        button_dest_folder = ttk.Button(self, text="choose destination folder",
+                            command=lambda: self.folder_dialog())
+        button_dest_folder.grid(row=8,column=0,columnspan=3)
+        self.label_dest_folder =  blue_label = ttk.Label(self, text="")
+        self.label_dest_folder.grid(row=9,column=0,columnspan=3)
+        
         self.display_cb = tk.IntVar()
-        ttk.Checkbutton(self, text="display live image", variable=self.display_cb).grid(row=8, column=0, sticky=tk.E)
+        ttk.Checkbutton(self, text="display live image", variable=self.display_cb).grid(row=10, column=0, sticky=tk.E)
+        self.display_cb.set(1)
+        self.display_hist_cb = tk.IntVar()
+        ttk.Checkbutton(self, text="display histogram", variable=self.display_hist_cb).grid(row=10, column=1, sticky=tk.E)
+        self.display_hist_cb.set(1)
         self.save_cb = tk.IntVar()
-        ttk.Checkbutton(self, text="save images", variable=self.save_cb).grid(row=8, column=1, sticky=tk.E)
+        ttk.Checkbutton(self, text="save images", variable=self.save_cb).grid(row=10, column=2, sticky=tk.E)
+        
+        
         button_start_measurement = ttk.Button(self, text="start measurement",
                             command=lambda: self.file_dialog())
-        button_start_measurement.grid(row=9,column=0,columnspan=3)
+        button_start_measurement.grid(row=11,column=0,columnspan=3)
+        # TODO: when measurement is started make sure to copy nodefile to dest..
 
         StartPage.class_canvas.draw()
-        StartPage.class_canvas.get_tk_widget().grid(row=0, rowspan=10, column=3, sticky = "se")
+        StartPage.class_canvas.get_tk_widget().grid(row=0, rowspan=13, column=3, sticky = "se")
 
         #toolbar = NavigationToolbar2Tk(StartPage.class_canvas, self)
         #toolbar.update()
-        StartPage.class_canvas._tkcanvas.grid(row=0, rowspan=10, column=3, sticky = "se")
+        StartPage.class_canvas._tkcanvas.grid(row=0, rowspan=13, column=3, sticky = "se", pady=0)
         
         #controller.container.grid_columnconfigure(3, weight=1)
         self.grid_columnconfigure(3, weight=2)
@@ -196,6 +213,10 @@ class StartPage(tk.Frame):
     def file_dialog(self):
         self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
         self.label_protocol_filename.configure(text=self.filename)
+        
+    def folder_dialog(self):
+        self.foldername = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
+        self.label_dest_folder.configure(text=self.foldername)
 
 
 
@@ -264,6 +285,8 @@ class StartPage(tk.Frame):
             
             #self.canvas.draw()
             print("show images now")
+            print("display checkbox is --------------- {}".format(self.display_cb.get()))
+            print("save checkbox is --------------- {}".format(self.save_cb.get()))
             self.show_color_image(images, temp)
             
         
@@ -281,48 +304,65 @@ class StartPage(tk.Frame):
         
         dynamic_range = 4095#65520
         darkest_img_mean = sys.maxsize
-        index_background = -1
+        index_background = None
         i = 0
         fig_hist.clear()
         for image in images:
             img_mean = image.mean()
-            fig_hist.hist(image.flatten(), 32, label='LED {}'.format(i), alpha=0.5)
+            if self.display_hist_cb.get():
+                if len(self.controller.led_background_list) == 0:
+                    fig_hist.hist(image.flatten(), 32, label='LED {}'.format(i), alpha=0.8, histtype="step")
+                else:
+                    fig_hist.hist(image.flatten(), 32, label=LED_WAVELENGTHS[(i + int(np.rint(np.mean(self.controller.led_background_list)))) % 9], alpha=0.8, histtype="step")
+                    
             print("LED {} has a mean off: {}".format(i, img_mean))
             if img_mean < darkest_img_mean:
                 darkest_img_mean = img_mean
                 index_background = i
             i += 1
         print("off is LED {}".format(index_background))
-        fig_hist.legend(loc='upper right')
-        self.controller.led_background = index_background
+        if self.display_hist_cb.get():
+            fig_hist.legend(bbox_to_anchor=(0,-0.2,1,0.2), loc="upper left",
+                mode="expand", borderaxespad=0, ncol=5)
+        self.controller.led_background_list.append(index_background)
+        old_backgound = int(np.rint(np.mean(self.controller.led_background_list)))
+        if index_background != old_backgound:
+            print("------------------------------WARNING-------------------------------")
+            print("measured background LED {} is deviating from previous background {}".format(
+                index_background, old_backgound))
+            print("--------------------------------------------------------------------")
+            index_background = old_backgound
+        
+        
+        
         #todo fix what colors
-        img_off =images[index_background]
-        img_r =(images[(index_background + self.red_LED.current()) % 9] - img_off).clip(min=0)
-        img_g =(images[(index_background + self.green_LED.current()) % 9] - img_off).clip(min=0)
-        img_b =(images[(index_background + self.blue_LED.current()) % 9] - img_off).clip(min=0)
-        print("red min {} mean {} max {}".format(img_r.min(),img_r.mean(),img_r.max()))
-        print("green min {} mean {} max {}".format(img_g.min(),img_g.mean(),img_g.max()))
-        print("blue min {} mean {} max {}".format(img_b.min(),img_b.mean(),img_b.max()))
+        img_background =images[index_background]
+        processed_img = [img_background] # this list will contain bkg and then bkg subtracted images in increasing wavelengths same order as LED_WAVELENGTHS
+        for s in range(0,len(LED_WAVELENGTHS) - 1):
+            current_image = (images[(index_background + s + 1) % 9] - img_background).clip(min=0)
+            current_image = current_image.astype(float)/dynamic_range
+            processed_img.append(current_image)
+        processed_img[0] =   processed_img[0].astype(float)/dynamic_range # normalize background
         
+        if self.display_cb.get():
+            self.color_img = np.ndarray(shape=(processed_img[1].shape + (3,)),dtype=float)
+            self.color_img[:,:,0] = processed_img[self.red_LED.current()]
+            self.color_img[:,:,1] = processed_img[self.green_LED.current()]
+            self.color_img[:,:,2] = processed_img[self.blue_LED.current()]
+            fig_image.clear()
+            fig_image.imshow(self.color_img)
         
-        #img_r = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 6) % 9))
-        #img_g = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 5) % 9))
-        #img_b = plt.imread("sample_imgs/{}.tiff".format((self.controller.led_background + 3) % 9))
-        self.color_img = np.ndarray(shape=(img_r.shape + (3,)),dtype=float)
-        red = (img_r).astype(float)
-        red = red/dynamic_range
-        green = (img_g).astype(float)
-        green = green/dynamic_range
-        blue = (img_b).astype(float)
-        blue = blue/dynamic_range
-        self.color_img[:,:,0] = red
-        self.color_img[:,:,1] = green
-        self.color_img[:,:,2] = blue
-        fig_image.clear()
-        fig_image.imshow(self.color_img)
-        
-        import imageio
-        imageio.imwrite("{}_col_test.tiff".format(temp), self.color_img)
+        if self.save_cb.get():
+            import imageio
+            for n, led in enumerate(LED_WAVELENGTHS):
+                imageio.imwrite("{}_{}.tiff".format(led, temp), processed_img[n])
+            imageio.imwrite("{}_color_image.tiff".format(temp), self.color_img)
+            
+            #TODO: just add all colors
+            #TODO need to have a stable way of finding off index
+            #TODO: need to fix legend so it says actual wavelengths
+            
+            #TODO: save to folder directly
 
        
     
