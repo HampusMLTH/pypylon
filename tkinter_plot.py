@@ -51,11 +51,10 @@ fig_hist = f.add_subplot(212)
 #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
 #folder_path = "/" + time.strftime("%Y%m%d-%H%M%S/")
 #test_folder = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
-test_folder = "C:/Users/Hampus/Desktop/testtest"
-folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
-q = Queue(maxsize=MAX_QSIZE)
-bc = BaslerController(folder_path, q)
-#bc = BaslerController(folder_path)
+#test_folder = "C:/Users/Hampus/Desktop/testtest"
+#folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
+
+#bc = BaslerController(folder_path, q)
 
 
 
@@ -73,11 +72,16 @@ class GoniometerApp(tk.Tk):
 
     def __init__(self, *args, **kwargs):
         
-
+        
         self.nbr_exposures = 9
         self.led_background_list = []
         tk.Tk.__init__(self, *args, **kwargs)
-
+        
+        test_folder = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
+        folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
+        self.q = Queue(maxsize=MAX_QSIZE)
+        self.bc = BaslerController(folder_path, self.q)
+        
         tk.Tk.iconbitmap(self, default="clienticon.ico")
         tk.Tk.wm_title(self, "Goniometer")
         
@@ -173,13 +177,13 @@ class StartPage(tk.Frame):
         button_choose_protocol = ttk.Button(self, text="choose protocol file",
                             command=lambda: self.file_dialog())
         button_choose_protocol.grid(row=6,column=0,columnspan=3)
-        self.label_protocol_filename =  blue_label = ttk.Label(self, text="")
+        self.label_protocol_filename = ttk.Label(self, text="")
         self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
-        button_dest_folder = ttk.Button(self, text="choose destination folder",
-                            command=lambda: self.folder_dialog())
-        button_dest_folder.grid(row=8,column=0,columnspan=3)
-        self.label_dest_folder =  blue_label = ttk.Label(self, text="")
+        #button_dest_folder = ttk.Button(self, text="choose destination folder",
+        #                    command=lambda: self.folder_dialog())
+        #button_dest_folder.grid(row=8,column=0,columnspan=3)
+        self.label_dest_folder = ttk.Label(self, text=self.controller.bc.folder_path)
         self.label_dest_folder.grid(row=9,column=0,columnspan=3)
         
         self.display_cb = tk.IntVar()
@@ -251,8 +255,8 @@ class StartPage(tk.Frame):
     
     def close_camera(self):
         self.stop_live_view()
-        bc.stop_cont_acq()
-        bc.close_camera()
+        self.controller.bc.stop_cont_acq()
+        self.controller.bc.close_camera()
     
     def consumer_thread(self, stop):
         #
@@ -268,7 +272,7 @@ class StartPage(tk.Frame):
                 #img = plt.imread("sample_imgs/{}.tiff".format(i))
 
                 try:
-                    img = q.get(timeout=1)
+                    img = self.controller.q.get(timeout=1)
                 except Empty:
                     print("timeout reached, i is {}".format(i))
                     if stop():
@@ -276,7 +280,7 @@ class StartPage(tk.Frame):
                 else:
                     #
                     images.append(img.astype('int16'))
-                    q.task_done()
+                    self.controller.q.task_done()
                     
                     i += 1
              
@@ -372,16 +376,16 @@ class StartPage(tk.Frame):
         except ValueError:
             tk.messagebox.showwarning(title="Error", message="Type a number")
         else:
-            bc.update_nodemap_value(self.field_combo.get(), value)
+            self.controller.bc.update_nodemap_value(self.field_combo.get(), value)
             self.unit_label["text"] = UNITS[self.field_combo.current()]
             print("{} is updated to {}".format(self.value_entry.get(), value))
             
 
     
     def get_nodemap_value(self):
-        print(bc.get_nodemap_value(self.field_combo.get()))
+        print(self.controller.bc.get_nodemap_value(self.field_combo.get()))
         self.value_entry.delete(0, tk.END)
-        self.value_entry.insert(0,str(bc.get_nodemap_value(self.field_combo.get())))
+        self.value_entry.insert(0,str(self.controller.bc.get_nodemap_value(self.field_combo.get())))
         
         self.unit_label["text"] = UNITS[self.field_combo.current()]
     
@@ -396,9 +400,9 @@ class StartPage(tk.Frame):
         
     def update_graph(self):
         
-        bc.open_camera()
-        bc.update_nodemap()
-        bc.cont_acq()
+        self.controller.bc.open_camera()
+        self.controller.bc.update_nodemap()
+        self.controller.bc.cont_acq()
         stop_threads = False
         #consumer_thread = threading.Thread(target=self.consumer_thread, args =(lambda : stop_threads, ))
         #consumer_thread.start()

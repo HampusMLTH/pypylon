@@ -31,7 +31,7 @@ PixelFormat	Mono12
 TestPattern	Off
 SensorShutterMode	Global
 OverlapMode	Off
-ExposureTimeRaw	10000
+ExposureTimeRaw	100000
 ExposureAuto	Off
 AutoExposureTimeLowerLimitRaw	100
 AutoExposureTimeUpperLimitRaw	100000
