@@ -23,7 +23,7 @@ class BaslerController(object):
         os.mkdir(self.folder_path) # unique folder for this measurement
         self.counter = 0
         self.thread_move = None
-        self.node_file = "daA1600-60um_gain.pfs"
+        self.nodefile = "acA1920-155um_bin_3.pfs"#"daA1600-60um_gain.pfs"#"daA1600-60um_gain.pfs"#
         
         
     def open_camera(self):
@@ -33,7 +33,7 @@ class BaslerController(object):
         self.cam.Close()
     
     def update_nodemap_value(self, field, new_value):
-        file = open(self.node_file, "r")
+        file = open(self.nodefile, "r")
         new_file_contents = ""
         for line in file:
             if field in line:
@@ -41,30 +41,33 @@ class BaslerController(object):
                 line = line.replace(line.split()[1], str(new_value))
             new_file_contents += line
         file.close()
-        file = open(self.node_file, "w")
+        file = open(self.nodefile, "w")
         file.write(new_file_contents)
         file.close()
     
     def get_nodemap_value(self, field):
-        file = open(self.node_file, "r")
+        file = open(self.nodefile, "r")
         for line in file:
              if field in line:
                 print("{} is {}".format(field, line.split()[1]))
-                return(int(line.split()[1])) # TODO: are some values float?
-        raise KeyError("{} not in Nodefile {}".format(field, self.node_file))
+                value = float(line.split()[1])
+                if value.is_integer():
+                    value = int(value)
+                return(value)
+        raise KeyError("{} not in Nodefile {}".format(field, self.nodefile))
                     
     def update_nodemap(self):
         # The name of the pylon file handle
         
-        shutil.copy(self.node_file, self.folder_path + self.node_file) # make a copy of the settings used for this measurement
+        shutil.copy(self.nodefile, self.folder_path + self.nodefile) # make a copy of the settings used for this measurement
         # Print the model name of the camera.
         print("Using device ", self.cam.GetDeviceInfo().GetModelName())
 
         # featurePersistence = pylon.FeaturePersistence()
 
         # read the content of the file back to the camera's node map with enabled validation.
-        print("Updating nodefile {} to camera's node map.".format(self.node_file))
-        pylon.FeaturePersistence.Load(self.node_file, self.cam.GetNodeMap(), True)
+        print("Updating nodefile {} to camera's node map.".format(self.nodefile))
+        pylon.FeaturePersistence.Load(self.nodefile, self.cam.GetNodeMap(), True)
         
     
     def cont_acq(self):

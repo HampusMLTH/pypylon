@@ -36,9 +36,12 @@ LED_WAVELENGTHS = ["background",
                    "630 nm",
                    "810 nm",
                    "940 nm",]
-FIELDS = ["ExposureTimeRaw",
-          "GainRaw",
-          "AccuisitionRateRaw"]
+#FIELDS = ["ExposureTimeRaw",
+#         "GainRaw",
+#          "AqcuisitionRateRaw"]
+FIELDS = ["ExposureTime",
+          "Gain\t",
+          "AcquisitionFrameRate"]
 UNITS = ["µs",
           "linear gain",
           "?"]
@@ -180,11 +183,11 @@ class StartPage(tk.Frame):
         self.label_protocol_filename = ttk.Label(self, text="")
         self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
-        #button_dest_folder = ttk.Button(self, text="choose destination folder",
-        #                    command=lambda: self.folder_dialog())
-        #button_dest_folder.grid(row=8,column=0,columnspan=3)
-        self.label_dest_folder = ttk.Label(self, text=self.controller.bc.folder_path)
-        self.label_dest_folder.grid(row=9,column=0,columnspan=3)
+        button_nodefile = ttk.Button(self, text="choose camera param file",
+                                        command=lambda: self.folder_dialog())
+        button_nodefile.grid(row=8,column=0,columnspan=3)
+        self.label_nodefile = ttk.Label(self, text=self.controller.bc.nodefile)
+        self.label_nodefile.grid(row=9,column=0,columnspan=3)
         
         self.display_cb = tk.IntVar()
         ttk.Checkbutton(self, text="display live image", variable=self.display_cb).grid(row=10, column=0, sticky=tk.E)
@@ -217,6 +220,10 @@ class StartPage(tk.Frame):
     def file_dialog(self):
         self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
         self.label_protocol_filename.configure(text=self.filename)
+    
+    def nodefile_dialog(self):
+        self.controller.bc.nodefile = filedialog.askopenfilename(initialdir = "/", title = "Choose nodefile for camera parameters", filetype = (("PSF file","*.psf"),))
+        self.label_nodefile.configure(text=self.filename)
         
     def folder_dialog(self):
         self.foldername = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
