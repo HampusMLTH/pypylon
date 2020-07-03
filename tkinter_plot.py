@@ -58,7 +58,7 @@ UNITS = ["µs",
 LARGE_FONT= ("Verdana", 12)
 style.use("ggplot")
 
-f = Figure(figsize=(10,9), dpi=100)
+f = Figure(figsize=(10,7), dpi=100)
 fig_image = f.add_subplot(211)
 fig_hist = f.add_subplot(212)
 #folder_path = "/home/pi/Desktop/BrickPi3-master/Software/Python/Testing Scripts/pypylon/images/" 
@@ -416,6 +416,7 @@ class StartPage(tk.Frame):
         self.unit_label["text"] = UNITS[self.field_combo.current()]
     
     def start_live_view(self):
+        self.controller.led_background_list = []
         self.stop_threads = False
         self.cons_thread = threading.Thread(target=self.consumer_thread, args =(lambda : self.stop_threads, ))
         self.cons_thread.start()
