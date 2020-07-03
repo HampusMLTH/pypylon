@@ -1,5 +1,5 @@
 # The code for changing pages was derived from: http://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter
-# License: http://creativecommons.org/licenses/by-sa/3.0/	
+# License: http://creativecommons.org/licenses/by-sa/3.0/   
 
 
 # TODO: browse folder to initiate bc
@@ -17,6 +17,7 @@ from tkinter import filedialog
 #import tkinter.messagebox
 
 import time
+import timeit
 from basler_controller import BaslerController
 import sys
 import numpy as np
@@ -26,7 +27,7 @@ from queue import Queue
 from queue import Empty
 import threading
 
-MAX_QSIZE = 10
+MAX_QSIZE = 30
 LED_WAVELENGTHS = ["background",
                    "365 nm",
                    "405 nm",
@@ -36,6 +37,15 @@ LED_WAVELENGTHS = ["background",
                    "630 nm",
                    "810 nm",
                    "940 nm",]
+PLOT_COLORS = [(.85,.96,.64),
+               (.7,.7,.7),
+               (.7,0,.7),
+               (.5,0,.9,),
+               (.4,0.9,.8),
+               (.0,1,.0),
+               (1,0,.0),
+               (.5,0.5,.5),
+               (.1,.1,.1),]
 #FIELDS = ["ExposureTimeRaw",
 #         "GainRaw",
 #          "AqcuisitionRateRaw"]
@@ -85,7 +95,7 @@ class GoniometerApp(tk.Tk):
         self.q = Queue(maxsize=MAX_QSIZE)
         self.bc = BaslerController(folder_path, self.q)
         
-        tk.Tk.iconbitmap(self, default="clienticon.ico")
+        #tk.Tk.iconbitmap(self, default="clienticon.ico")
         tk.Tk.wm_title(self, "Goniometer")
         
         
@@ -97,7 +107,8 @@ class GoniometerApp(tk.Tk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
         self.frames = {}
-
+        
+        
         for F in (StartPage, ):
 
             frame = F(self.container, self)
@@ -216,6 +227,8 @@ class StartPage(tk.Frame):
         # column 3 should expand to allow image to be as large as possible
         #same logic with row 10
         
+        self.ani = animation.FuncAnimation(f, StartPage.draw, interval=2000)
+        
 
     def file_dialog(self):
         self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
@@ -270,6 +283,7 @@ class StartPage(tk.Frame):
         print("in thread")
         temp = 0
         while not stop():
+            start_time = time.time()
             temp += 1
             print("----------stop is {}".format(stop()))
             i = 0
@@ -279,7 +293,7 @@ class StartPage(tk.Frame):
                 #img = plt.imread("sample_imgs/{}.tiff".format(i))
 
                 try:
-                    img = self.controller.q.get(timeout=1)
+                    img = self.controller.q.get(timeout=3)
                 except Empty:
                     print("timeout reached, i is {}".format(i))
                     if stop():
@@ -299,7 +313,10 @@ class StartPage(tk.Frame):
             print("display checkbox is --------------- {}".format(self.display_cb.get()))
             print("save checkbox is --------------- {}".format(self.save_cb.get()))
             self.show_color_image(images, temp)
-            
+            end_time = time.time()
+            new_interval = int((end_time - start_time)*1000)
+            print("updating interval to {}".format(new_interval))
+            self.ani.event_source.interval = new_interval
         
             
         print("bottom")
@@ -321,12 +338,14 @@ class StartPage(tk.Frame):
         for image in images:
             img_mean = image.mean()
             if self.display_hist_cb.get():
+                plot_index = 0
                 if len(self.controller.led_background_list) == 0:
                     fig_hist.hist(image.flatten(), 32, label='LED {}'.format(i), alpha=0.8, histtype="step")
                 else:
-                    fig_hist.hist(image.flatten(), 32, label=LED_WAVELENGTHS[(i + int(np.rint(np.mean(self.controller.led_background_list)))) % 9], alpha=0.8, histtype="step")
-                    
-            print("LED {} has a mean off: {}".format(i, img_mean))
+                    plot_index = (i - int(np.rint(np.mean(self.controller.led_background_list)))) % 9
+                    fig_hist.hist(image.flatten(), 32, label=LED_WAVELENGTHS[plot_index], alpha=0.8, histtype="step", color=PLOT_COLORS[plot_index])
+                fig_hist.plot(img_mean, 10000, 'o', color=PLOT_COLORS[plot_index])
+            print("LED {} has a mean off: {} plot_index:{}, color:{} code:{}".format(i, img_mean, plot_index, LED_WAVELENGTHS[plot_index],PLOT_COLORS[plot_index]))
             if img_mean < darkest_img_mean:
                 darkest_img_mean = img_mean
                 index_background = i
@@ -429,6 +448,9 @@ class StartPage(tk.Frame):
 
 app = GoniometerApp()
 #ani = animation.FuncAnimation(f, animate, interval=2000)
-ani = animation.FuncAnimation(f, StartPage.draw, interval=2000)
+
+
+#app.ani = animation.FuncAnimation(f, StartPage.draw, interval=2000)
+
 app.mainloop()
         

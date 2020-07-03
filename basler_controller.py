@@ -23,7 +23,7 @@ class BaslerController(object):
         os.mkdir(self.folder_path) # unique folder for this measurement
         self.counter = 0
         self.thread_move = None
-        self.nodefile = "acA1920-155um_bin_3.pfs"#"daA1600-60um_gain.pfs"#"daA1600-60um_gain.pfs"#
+        self.nodefile = "acA1920-155um_bin_3.pfs"#"daA1600-60um_gain.pfs"#"acA1920-155um_bin_2.pfs"#"daA1600-60um_gain.pfs"
         
         
     def open_camera(self):
@@ -100,7 +100,7 @@ class BaslerController(object):
             with self.cam.RetrieveResult(2000) as result:
                 self.counter = self.counter + 1
                 
-                print("putting")
+                #print("putting")
                 self.queue.put(result.Array)                
                 print("bc queue size: {}".format(self.queue.qsize()))
                 # Calling AttachGrabResultBuffer creates another reference to the
