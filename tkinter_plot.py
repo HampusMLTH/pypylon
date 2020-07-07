@@ -27,6 +27,8 @@ from queue import Queue
 from queue import Empty
 import threading
 
+import GoniometerMock
+
 MAX_QSIZE = 30
 LED_WAVELENGTHS = ["background",
                    "365 nm",
@@ -94,7 +96,7 @@ class GoniometerApp(tk.Tk):
         folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
         self.q = Queue(maxsize=MAX_QSIZE)
         self.bc = BaslerController(folder_path, self.q)
-        
+        self.go = GoniometerMock()
         #tk.Tk.iconbitmap(self, default="clienticon.ico")
         tk.Tk.wm_title(self, "Goniometer")
         
@@ -230,6 +232,9 @@ class StartPage(tk.Frame):
         self.ani = animation.FuncAnimation(f, StartPage.draw, interval=2000)
         
 
+    def start_measurement():
+        print("test start meas")
+        
     def file_dialog(self):
         self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
         self.label_protocol_filename.configure(text=self.filename)
@@ -242,7 +247,7 @@ class StartPage(tk.Frame):
         self.foldername = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
         self.label_dest_folder.configure(text=self.foldername)
 
-
+   
 
     def get_area(self):
         plt.imshow(self.color_img)
@@ -385,8 +390,8 @@ class StartPage(tk.Frame):
         if self.save_cb.get():
             import imageio
             for n, led in enumerate(LED_WAVELENGTHS):
-                imageio.imwrite("{}_{}.tiff".format(led, temp), processed_img[n])
-            imageio.imwrite("{}_color_image.tiff".format(temp), self.color_img)
+                imageio.imwrite(self.controller.bc.folder_path + "{}_{}.tiff".format(led, temp), processed_img[n])
+            imageio.imwrite(self.controller.bc.folder_path + "{}_color_image.tiff".format(temp), self.color_img)
             
             #TODO: just add all colors
             #TODO need to have a stable way of finding off index
