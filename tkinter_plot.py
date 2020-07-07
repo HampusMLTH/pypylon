@@ -27,7 +27,7 @@ from queue import Queue
 from queue import Empty
 import threading
 
-import GoniometerMock
+from goniometer_mock import GoniometerMock
 
 MAX_QSIZE = 30
 LED_WAVELENGTHS = ["background",
@@ -39,7 +39,7 @@ LED_WAVELENGTHS = ["background",
                    "630 nm",
                    "810 nm",
                    "940 nm",]
-PLOT_COLORS = [(.85,.96,.64),
+PLOT_COLORS = [(.85,.85,.54),
                (.7,.7,.7),
                (.7,0,.7),
                (.5,0,.9,),
@@ -96,7 +96,7 @@ class GoniometerApp(tk.Tk):
         folder_path = test_folder + time.strftime("/%Y%m%d-%H%M%S/")
         self.q = Queue(maxsize=MAX_QSIZE)
         self.bc = BaslerController(folder_path, self.q)
-        self.go = GoniometerMock()
+        #self.go = GoniometerMock()
         #tk.Tk.iconbitmap(self, default="clienticon.ico")
         tk.Tk.wm_title(self, "Goniometer")
         
@@ -141,7 +141,8 @@ class StartPage(tk.Frame):
         self.controller = controller
         StartPage.class_canvas = FigureCanvasTkAgg(f, self)
 
-        
+        self.protocol_filename = r"C:\Users\Hampus\Desktop\testtest\protocol_test.csv" 
+        #"E:\measurements\protocol_test.csv"
 
         
 
@@ -193,7 +194,7 @@ class StartPage(tk.Frame):
         button_choose_protocol = ttk.Button(self, text="choose protocol file",
                             command=lambda: self.file_dialog())
         button_choose_protocol.grid(row=6,column=0,columnspan=3)
-        self.label_protocol_filename = ttk.Label(self, text="")
+        self.label_protocol_filename = ttk.Label(self, text=self.protocol_filename)
         self.label_protocol_filename.grid(row=7,column=0,columnspan=3)
         
         button_nodefile = ttk.Button(self, text="choose camera param file",
@@ -213,7 +214,7 @@ class StartPage(tk.Frame):
         
         
         button_start_measurement = ttk.Button(self, text="start measurement",
-                            command=lambda: self.file_dialog())
+                            command=lambda: self.start_measurement())
         button_start_measurement.grid(row=11,column=0,columnspan=3)
         # TODO: when measurement is started make sure to copy nodefile to dest..
 
@@ -232,19 +233,35 @@ class StartPage(tk.Frame):
         self.ani = animation.FuncAnimation(f, StartPage.draw, interval=2000)
         
 
-    def start_measurement():
+    def start_measurement(self):
         print("test start meas")
+        if self.protocol_filename is None:
+            self.protocol_filename = self.file_dialog()
+        protocol = GoniometerMock.read_csv(self.protocol_filename)
+        self.go = GoniometerMock()
+        #self.go.copy_csv(self.protocol_filename, self.controller.bc.folder_path)
+        for d in protocol:
+            print("led:", d[0])
+            self.go.led_angle = int(d[0])
+            print("stage:", d[1])
+            self.go.stage_angle = int(d[1])
+            print("sample:", d[2])
+            self.go.sample_angle = int(d[2])
+            self.go.done_moving(self.go.LED)
+            self.go.done_moving(self.go.STAGE)
+            self.go.done_moving(self.go.SAMPLE)
+            print("-----------SAVE IMAGES")
         
     def file_dialog(self):
-        self.filename = filedialog.askopenfilename(initialdir = "/", title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
-        self.label_protocol_filename.configure(text=self.filename)
+        self.protocol_filename = filedialog.askopenfilename(title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
+        self.label_protocol_filename.configure(text=self.protocol_filename)
     
     def nodefile_dialog(self):
         self.controller.bc.nodefile = filedialog.askopenfilename(initialdir = "/", title = "Choose nodefile for camera parameters", filetype = (("PSF file","*.psf"),))
-        self.label_nodefile.configure(text=self.filename)
+        self.label_nodefile.configure(text=self.controller.bc.nodefile)
         
     def folder_dialog(self):
-        self.foldername = filedialog.askdirectory(initialdir = "/", title = "Choose destination folder")
+        self.foldername = filedialog.askdirectory(initialdir = r"C:\Users\Hampus\Desktop\testtest\\", title = "Choose destination folder")
         self.label_dest_folder.configure(text=self.foldername)
 
    
@@ -315,8 +332,8 @@ class StartPage(tk.Frame):
             
             #self.canvas.draw()
             print("show images now")
-            print("display checkbox is --------------- {}".format(self.display_cb.get()))
-            print("save checkbox is --------------- {}".format(self.save_cb.get()))
+            #print("display checkbox is --------------- {}".format(self.display_cb.get()))
+            #print("save checkbox is --------------- {}".format(self.save_cb.get()))
             self.show_color_image(images, temp)
             end_time = time.time()
             new_interval = int((end_time - start_time)*1000)
@@ -350,7 +367,7 @@ class StartPage(tk.Frame):
                     plot_index = (i - int(np.rint(np.mean(self.controller.led_background_list)))) % 9
                     fig_hist.hist(image.flatten(), 32, label=LED_WAVELENGTHS[plot_index], alpha=0.8, histtype="step", color=PLOT_COLORS[plot_index])
                 fig_hist.plot(img_mean, 10000, 'o', color=PLOT_COLORS[plot_index])
-            print("LED {} has a mean off: {} plot_index:{}, color:{} code:{}".format(i, img_mean, plot_index, LED_WAVELENGTHS[plot_index],PLOT_COLORS[plot_index]))
+            print("LED {} has a mean off: {} plot_index:{}, color:{}".format(i, img_mean, plot_index, LED_WAVELENGTHS[plot_index]))
             if img_mean < darkest_img_mean:
                 darkest_img_mean = img_mean
                 index_background = i

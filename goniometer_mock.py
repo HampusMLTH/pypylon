@@ -35,7 +35,7 @@ class GoniometerMock(object):
         print("setter")
         pos1=round(8652*7*(angle/360))
         self.pos_led = pos1
-        sleep(abs(round(8652*7*(angle/360)/1440)+1))
+        #sleep(abs(round(8652*7*(angle/360)/1440)+1))
         
     @property
     def stage_angle(self):
@@ -48,7 +48,7 @@ class GoniometerMock(object):
     def stage_angle(self, angle):
         """Set the stage angle"""
         self.pos_stage= angle*2700/360 
-        sleep(angle*2/1440+1)
+        #sleep(angle*2/1440+1)
         
         # move the motor
         #print("moving")
@@ -67,13 +67,21 @@ class GoniometerMock(object):
        
         pos1=angle*2
         self.pos_sample = pos1
-        sleep(round(2700*(angle/360))/1440+1)
+        #sleep(round(2700*(angle/360))/1440+1)
     
     def init_motors(self):    
         pass
     
     def done_moving(self, motor):
-       sleep(2000)
+        print("start")
+        sleep(1000)
+        #import random
+        #for a in range(1000000):
+           
+        #    b = random.randint(1,100001)
+           
+        print("done")
+            
     
     def motor_status(self, motor):
         try:
