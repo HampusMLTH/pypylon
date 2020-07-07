@@ -56,10 +56,13 @@ class BaslerController(object):
                 return(value)
         raise KeyError("{} not in Nodefile {}".format(field, self.nodefile))
                     
+    def copy_nodemap(self):
+        shutil.copy(self.nodefile, self.folder_path + self.nodefile)
+    
     def update_nodemap(self):
         # The name of the pylon file handle
         
-        shutil.copy(self.nodefile, self.folder_path + self.nodefile) # make a copy of the settings used for this measurement
+        #shutil.copy(self.nodefile, self.folder_path + self.nodefile) # make a copy of the settings used for this measurement
         # Print the model name of the camera.
         print("Using device ", self.cam.GetDeviceInfo().GetModelName())
 

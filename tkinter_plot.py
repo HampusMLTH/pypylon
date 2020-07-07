@@ -16,6 +16,7 @@ from tkinter import ttk
 from tkinter import filedialog
 #import tkinter.messagebox
 
+import os
 import time
 import timeit
 from basler_controller import BaslerController
@@ -141,9 +142,11 @@ class StartPage(tk.Frame):
         self.controller = controller
         StartPage.class_canvas = FigureCanvasTkAgg(f, self)
 
-        self.protocol_filename = r"C:\Users\Hampus\Desktop\testtest\protocol_test.csv" 
+        self.protocol_filename = "E:\measurements\protocol_test.csv"#r"C:\Users\Hampus\Desktop\testtest\protocol_test.csv" 
         #"E:\measurements\protocol_test.csv"
-
+        self.protocol_nbr_rows = None
+        #self.protocol_index = None
+        
         
 
         button_start_cam = ttk.Button(self, text="start camera",
@@ -206,16 +209,20 @@ class StartPage(tk.Frame):
         self.display_cb = tk.IntVar()
         ttk.Checkbutton(self, text="display live image", variable=self.display_cb).grid(row=10, column=0, sticky=tk.E)
         self.display_cb.set(1)
+        
         self.display_hist_cb = tk.IntVar()
         ttk.Checkbutton(self, text="display histogram", variable=self.display_hist_cb).grid(row=10, column=1, sticky=tk.E)
         self.display_hist_cb.set(1)
+        
         self.save_cb = tk.IntVar()
         ttk.Checkbutton(self, text="save images", variable=self.save_cb).grid(row=10, column=2, sticky=tk.E)
         
         
         button_start_measurement = ttk.Button(self, text="start measurement",
                             command=lambda: self.start_measurement())
-        button_start_measurement.grid(row=11,column=0,columnspan=3)
+        button_start_measurement.grid(row=11,column=0,columnspan=2)
+        self.measuring_label = tk.Label(self, text="")
+        self.measuring_label.grid(row=11, column=3)
         # TODO: when measurement is started make sure to copy nodefile to dest..
 
         StartPage.class_canvas.draw()
@@ -237,23 +244,18 @@ class StartPage(tk.Frame):
         print("test start meas")
         if self.protocol_filename is None:
             self.protocol_filename = self.file_dialog()
-        protocol = GoniometerMock.read_csv(self.protocol_filename)
-        self.go = GoniometerMock()
+        
+        self.measuring_label["text"] = "MEASURING"
+        
         #self.go.copy_csv(self.protocol_filename, self.controller.bc.folder_path)
         #self.wait_thread = threading.Thread(target=self.wait_thread)
-        for d in protocol:
-            print("led:", d[0])
-            self.go.led_angle = int(d[0])
-            print("stage:", d[1])
-            self.go.stage_angle = int(d[1])
-            print("sample:", d[2])
-            self.go.sample_angle = int(d[2])
+        
             
-            self.wait_thread()
+            #self.wait_thread()
             #self.wait_thread.start()
             #self.wait_thread.join()
-            print("-----------SAVE IMAGES")
-    def wait_thread(self):
+            #print("-----------SAVE IMAGES")
+    def wait_4_motors(self):
         print("in wait thread")
         self.go.done_moving(self.go.LED)
         self.go.done_moving(self.go.STAGE)
@@ -281,7 +283,15 @@ class StartPage(tk.Frame):
         self.stop_live_view()
         self.controller.bc.stop_cont_acq()
         self.controller.bc.close_camera()
-    
+    def move_1(self, d):
+        print("led:", d[0])
+        self.go.led_angle = int(d[0])
+        print("stage:", d[1])
+        self.go.stage_angle = int(d[1])
+        print("sample:", d[2])
+        self.go.sample_angle = int(d[2])
+        self.wait_4_motors()
+        
     def consumer_thread(self, stop):
         #
         print("in thread")
@@ -289,9 +299,36 @@ class StartPage(tk.Frame):
         while not stop():
             start_time = time.time()
             temp += 1
-            print("----------stop is {}".format(stop()))
+            #print("stop is {}".format(stop()))
             i = 0
             images = []
+            if self.measuring_label["text"]:
+                if self.protocol_nbr_rows is None:
+                    print("START MEASURING")
+                    self.controller.bc.copy_nodemap()
+                    self.protocol = GoniometerMock.read_csv(self.protocol_filename)
+                    self.go = GoniometerMock()
+                    self.protocol_nbr_rows = len(self.protocol)
+                    self.protocol_index = -1
+                if self.protocol_index == self.protocol_nbr_rows-1:
+                    self.measuring_label["text"] = ""
+                    self.save_cb.set(0)
+                    #done with protocol
+                else:
+                    self.protocol_index = self.protocol_index + 1
+                    self.move_1(self.protocol[self.protocol_index])
+                    #for d in protocol:
+                    while (self.controller.q.qsize())%9 != 0:
+                        time.sleep(0.001)
+                    #with self.controller.q.mutex:
+                    print((self.controller.q.qsize()))
+                    print("CLEARING QUEUE")
+                    self.controller.q.queue.clear()
+                    #TODO: this is a little dangerous if an element is added before clearing.. 
+                    # instead clear 9*x times untill all are removed..
+                    
+                    self.save_cb.set(1)
+               
             while i < 9:
 
                 #img = plt.imread("sample_imgs/{}.tiff".format(i))
@@ -388,9 +425,14 @@ class StartPage(tk.Frame):
         
         if self.save_cb.get():
             import imageio
+            pos_str=""
+            if self.measuring_label["text"]:
+                pos = self.protocol[self.protocol_index]
+                pos_str = "led_{}_stage_{}_sample_{}/".format(pos[0], pos[1], pos[2])
+                os.mkdir(self.controller.bc.folder_path + pos_str)
             for n, led in enumerate(LED_WAVELENGTHS):
-                imageio.imwrite(self.controller.bc.folder_path + "{}_{}.tiff".format(led, temp), processed_img[n])
-            imageio.imwrite(self.controller.bc.folder_path + "{}_color_image.tiff".format(temp), self.color_img)
+                imageio.imwrite(self.controller.bc.folder_path + pos_str + "{}_{}.tiff".format(led, temp), processed_img[n])
+            imageio.imwrite(self.controller.bc.folder_path + pos_str + "{}_color_image.tiff".format(temp), self.color_img)
             
             #TODO: just add all colors
             #TODO need to have a stable way of finding off index
@@ -433,6 +475,7 @@ class StartPage(tk.Frame):
         
         self.controller.bc.open_camera()
         self.controller.bc.update_nodemap()
+        
         self.controller.bc.cont_acq()
         stop_threads = False
         #consumer_thread = threading.Thread(target=self.consumer_thread, args =(lambda : stop_threads, ))
