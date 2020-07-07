@@ -240,6 +240,7 @@ class StartPage(tk.Frame):
         protocol = GoniometerMock.read_csv(self.protocol_filename)
         self.go = GoniometerMock()
         #self.go.copy_csv(self.protocol_filename, self.controller.bc.folder_path)
+        #self.wait_thread = threading.Thread(target=self.wait_thread)
         for d in protocol:
             print("led:", d[0])
             self.go.led_angle = int(d[0])
@@ -247,10 +248,17 @@ class StartPage(tk.Frame):
             self.go.stage_angle = int(d[1])
             print("sample:", d[2])
             self.go.sample_angle = int(d[2])
-            self.go.done_moving(self.go.LED)
-            self.go.done_moving(self.go.STAGE)
-            self.go.done_moving(self.go.SAMPLE)
+            
+            self.wait_thread()
+            #self.wait_thread.start()
+            #self.wait_thread.join()
             print("-----------SAVE IMAGES")
+    def wait_thread(self):
+        print("in wait thread")
+        self.go.done_moving(self.go.LED)
+        self.go.done_moving(self.go.STAGE)
+        self.go.done_moving(self.go.SAMPLE)
+        print("end of wait thread")
         
     def file_dialog(self):
         self.protocol_filename = filedialog.askopenfilename(title = "Choose protocol", filetype = (("CSV Files","*.csv"),))
@@ -263,32 +271,6 @@ class StartPage(tk.Frame):
     def folder_dialog(self):
         self.foldername = filedialog.askdirectory(initialdir = r"C:\Users\Hampus\Desktop\testtest\\", title = "Choose destination folder")
         self.label_dest_folder.configure(text=self.foldername)
-
-   
-
-    def get_area(self):
-        plt.imshow(self.color_img)
-        plt.show(block=False)
-        reference_coords = plt.ginput(2)
-        self.x_start = int(round(reference_coords[0][0]))
-        self.x_end = int(round(reference_coords[1][0]))
-        self.y_start = int(round(reference_coords[0][1]))
-        self.y_end = int(round(reference_coords[1][1]))
-        print(reference_coords)
-
-    def calibrate_area(self):
-        white_ref = self.color_img[self.x_start:self.x_end, self.y_start, self.y_end,:]
-        self.calib_val_red = white_ref[:,:,0].mean()
-        self.calib_val_green = white_ref[:,:,1].mean()
-        self.calib_val_blue = white_ref[:,:,2].mean()
-        print(self.calib_val_red)
-        print(self.calib_val_green)
-        print(self.calib_val_blue)
-        
-        self.color_img[:,:,0] = self.color_img[:,:,0] / self.calib_val_red
-        self.color_img[:,:,1] = self.color_img[:,:,1] / self.calib_val_green
-        self.color_img[:,:,2] = self.color_img[:,:,2] / self.calib_val_blue
-        self.color_img = self.color_img/np.max(self.color_img) 
     
     def draw(i):
         StartPage.class_canvas.draw()

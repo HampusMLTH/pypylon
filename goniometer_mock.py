@@ -74,7 +74,7 @@ class GoniometerMock(object):
     
     def done_moving(self, motor):
         print("start")
-        sleep(1000)
+        sleep(1)
         #import random
         #for a in range(1000000):
            
