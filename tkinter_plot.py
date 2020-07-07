@@ -30,7 +30,7 @@ import threading
 
 from goniometer_mock import GoniometerMock
 
-MAX_QSIZE = 30
+MAX_QSIZE = 36
 LED_WAVELENGTHS = ["background",
                    "365 nm",
                    "405 nm",
