@@ -314,7 +314,7 @@ class StartPage(tk.Frame):
                     self.measuring_label["text"] = ""
                     self.save_cb.set(0)
                     #done with protocol
-                else:
+                else: #not done with protocol
                     self.protocol_index = self.protocol_index + 1
                     self.move_1(self.protocol[self.protocol_index])
                     #for d in protocol:
@@ -339,7 +339,7 @@ class StartPage(tk.Frame):
                     print("timeout reached, i is {}".format(i))
                     if stop():
                         break
-                else:
+                else: #this will run after try if there was no exception
                     #
                     images.append(img.astype('int16'))
                     self.controller.q.task_done()
@@ -429,7 +429,8 @@ class StartPage(tk.Frame):
             if self.measuring_label["text"]:
                 pos = self.protocol[self.protocol_index]
                 pos_str = "led_{}_stage_{}_sample_{}/".format(pos[0], pos[1], pos[2])
-                os.mkdir(self.controller.bc.folder_path + pos_str)
+                if not os.path.isdir(self.controller.bc.folder_path + pos_str):
+                    os.mkdir(self.controller.bc.folder_path + pos_str)
             for n, led in enumerate(LED_WAVELENGTHS):
                 imageio.imwrite(self.controller.bc.folder_path + pos_str + "{}_{}.tiff".format(led, temp), processed_img[n])
             imageio.imwrite(self.controller.bc.folder_path + pos_str + "{}_color_image.tiff".format(temp), self.color_img)

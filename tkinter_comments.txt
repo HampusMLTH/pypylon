@@ -1,0 +1,28 @@
+Measurement started:
+button clicked->label set to measureing
+In consumer thread if label is set then initate measurement and print "START MEASURING"
+move to position according to protocol and wait until there. 
+wait untill we have a multiple of 9 images
+delete all images in buffer(they are from movement)
+(this part should be updated to remove a multipole of 9 not all...)
+save_cb is set to true
+9 images are appended to list  "images"
+q.task_done on each image
+starting "show_color_image" which should probably be renamed to handle 9_images or something
+loop through 9 images and find the one with the lowest mean
+append the index of the background image to a list led_background_list
+check if the current background index is the same as the mean of the list
+getting background image put first in list processed_image
+add the rest of the images with background substract from and as float/dynamic range
+background is normalized with dynamic range
+make folder led_{}_stage_{}_sample_{}
+write all the images with led wavelength and an iterator added to the filename
+a colorimage is saved with the chosen bands.
+Now done the "show color image" and back in consumer thread, set a new animation interval
+top of consumer_thread and  goto "move to position according to protocol and wait until there."
+
+comments: check dynamic range in tkinter
+check what else differs
+check if clear all q or 9 items
+check whats done of the "todos"
+check if stable with working lightsource
